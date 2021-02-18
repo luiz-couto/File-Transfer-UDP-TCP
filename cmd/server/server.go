@@ -5,8 +5,39 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 )
+
+//UDPConnection defines the udp connection object
+type UDPConnection struct {
+	connUDP *net.UDPConn
+	port    int
+}
+
+func startUDPConnection() (*UDPConnection, error) {
+	// Get a Free Port Number
+	listener, err := net.Listen("tcp", ":0")
+	if err != nil {
+		return nil, err
+	}
+
+	udpAddr, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(listener.Addr().(*net.TCPAddr).Port))
+	if err != nil {
+		return nil, err
+	}
+
+	connUDP, err := net.ListenUDP("udp", udpAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	return &UDPConnection{
+		connUDP: connUDP,
+		port:    udpAddr.Port,
+	}, nil
+
+}
 
 func handleConnection(conn net.Conn) {
 	for {
@@ -19,7 +50,15 @@ func handleConnection(conn net.Conn) {
 		msg = strings.TrimSpace(string(msg))
 		fmt.Println(msg)
 
-		fmt.Fprintf(conn, "Message Received!\n")
+		UDP, err := startUDPConnection()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		defer UDP.connUDP.Close()
+
+		fmt.Fprintf(conn, "Message Received! Your UDP port is "+fmt.Sprint(UDP.port)+"\n")
+
 	}
 }
 
