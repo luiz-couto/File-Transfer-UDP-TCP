@@ -2,6 +2,17 @@ package message
 
 import "strconv"
 
+// Message Types
+const (
+	HelloType int = iota + 1
+	ConnectionType
+	InfoFileType
+	OKType
+	FimType
+	FileType
+	AckType
+)
+
 //Message define the message struct
 type Message struct {
 	Type    int
