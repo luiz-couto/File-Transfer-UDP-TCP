@@ -1,9 +1,10 @@
 package message
 
 import (
-	"fmt"
 	"net"
 	"strconv"
+
+	"github.com/luiz-couto/File-Transfer-UDP-TCP/pkg/bytes"
 )
 
 // Message Types
@@ -19,8 +20,7 @@ const (
 
 //Message define the message struct
 type Message struct {
-	Type    int
-	Payload []byte
+	body []byte
 }
 
 // NewMessage creates a new Message
@@ -29,55 +29,73 @@ func NewMessage() *Message {
 }
 
 //HELLO defines the HELLO message type
-func (msg *Message) HELLO() {
-	msg.Type = HelloType
+func (msg *Message) HELLO() *Message {
+	id := bytes.CreateByteBlock(2, []byte(strconv.Itoa(HelloType)))
+
+	msg.body = id
+	return msg
 }
 
 //CONNECTION defines the HELLO message type
-func (msg *Message) CONNECTION(port int) {
-	msg.Type = ConnectionType
-	msg.Payload = []byte(strconv.Itoa(port))
+func (msg *Message) CONNECTION(port int) *Message {
+	id := bytes.CreateByteBlock(2, []byte(strconv.Itoa(ConnectionType)))
+	bPort := bytes.CreateByteBlock(4, []byte(strconv.Itoa(port)))
+
+	msg.body = append(id, bPort...)
+	return msg
 }
 
 //INFOFILE define the INFO FILE message type
-func (msg *Message) INFOFILE(fileName string, fileSize int) {
-	msg.Type = InfoFileType
+func (msg *Message) INFOFILE(fileName string, fileSize int) *Message {
+	id := bytes.CreateByteBlock(2, []byte(strconv.Itoa(InfoFileType)))
+	bFileName := bytes.CreateByteBlock(15, []byte(fileName))
+	bFileSize := bytes.CreateByteBlock(8, []byte(strconv.Itoa(fileSize)))
 
-	fileNameBytes := []byte(fileName)
-	fileSizeBytes := []byte(strconv.Itoa(fileSize))
-
-	msg.Payload = append(fileNameBytes, fileSizeBytes...)
+	msg.body = append(id, bFileName...)
+	msg.body = append(msg.body, bFileSize...)
+	return msg
 }
 
 //OK defines the OK message type
-func (msg *Message) OK() {
-	msg.Type = OKType
+func (msg *Message) OK() *Message {
+	id := bytes.CreateByteBlock(2, []byte(strconv.Itoa(OKType)))
+
+	msg.body = id
+	return msg
 }
 
 //FIM defines the FIM message type
-func (msg *Message) FIM() {
-	msg.Type = FimType
+func (msg *Message) FIM() *Message {
+	id := bytes.CreateByteBlock(2, []byte(strconv.Itoa(FimType)))
+
+	msg.body = id
+	return msg
 }
 
 // FILE defines the FILE message type
-func (msg *Message) FILE(seqNumber int, payloadSize int, payload []byte) {
-	msg.Type = FileType
+func (msg *Message) FILE(seqNumber int, payloadSize int, payload []byte) *Message {
+	id := bytes.CreateByteBlock(2, []byte(strconv.Itoa(FileType)))
+	bSeqNumber := bytes.CreateByteBlock(4, []byte(strconv.Itoa(seqNumber)))
+	bPayloadSize := bytes.CreateByteBlock(2, []byte(strconv.Itoa(payloadSize)))
+	bPayload := bytes.CreateByteBlock(payloadSize, payload)
 
-	seqNumberBytes := []byte(strconv.Itoa(seqNumber))
-	payloadSizeBytes := []byte(strconv.Itoa(payloadSize))
-
-	msg.Payload = append(seqNumberBytes, payloadSizeBytes...)
-	msg.Payload = append(msg.Payload, payload...)
+	msg.body = append(id, bSeqNumber...)
+	msg.body = append(msg.body, bPayloadSize...)
+	msg.body = append(msg.body, bPayload...)
+	return msg
 }
 
 // ACK defines the ACK message type
-func (msg *Message) ACK(seqNumber int) {
-	msg.Type = AckType
-	msg.Payload = []byte(strconv.Itoa(seqNumber))
+func (msg *Message) ACK(seqNumber int) *Message {
+	id := bytes.CreateByteBlock(2, []byte(strconv.Itoa(AckType)))
+	bSeqNumber := bytes.CreateByteBlock(4, []byte(strconv.Itoa(seqNumber)))
+
+	msg.body = append(id, bSeqNumber...)
+	return msg
 }
 
 // Send sends the message for given connection
 func (msg *Message) Send(conn net.Conn) {
-	message := append([]byte(strconv.Itoa(msg.Type)), msg.Payload...)
-	fmt.Fprintf(conn, string(message))
+	sendMsg := append(msg.body, []byte("\n")...)
+	conn.Write(sendMsg)
 }

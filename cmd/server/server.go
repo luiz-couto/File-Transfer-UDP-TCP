@@ -6,59 +6,71 @@ import (
 	"net"
 	"os"
 	"strconv"
-	"strings"
+
+	"github.com/luiz-couto/File-Transfer-UDP-TCP/pkg/bytes"
+	"github.com/luiz-couto/File-Transfer-UDP-TCP/pkg/message"
 )
+
+//Client DOC TODO
+type Client struct {
+	connTCP net.Conn
+	connUDP *UDPConnection
+}
 
 //UDPConnection defines the udp connection object
 type UDPConnection struct {
-	connUDP *net.UDPConn
-	port    int
+	UDP  *net.UDPConn
+	port int
 }
 
-func startUDPConnection() (*UDPConnection, error) {
+func (c *Client) startUDPConnection() {
 	// Get a Free Port Number
 	listener, err := net.Listen("tcp", ":0")
 	if err != nil {
-		return nil, err
+		fmt.Println(err)
+		return
 	}
 
 	udpAddr, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(listener.Addr().(*net.TCPAddr).Port))
 	if err != nil {
-		return nil, err
+		fmt.Println(err)
+		return
 	}
 
-	connUDP, err := net.ListenUDP("udp", udpAddr)
+	udp, err := net.ListenUDP("udp", udpAddr)
 	if err != nil {
-		return nil, err
+		fmt.Println(err)
+		return
 	}
 
-	return &UDPConnection{
-		connUDP: connUDP,
-		port:    udpAddr.Port,
-	}, nil
+	connUDP := &UDPConnection{
+		UDP:  udp,
+		port: udpAddr.Port,
+	}
+
+	c.connUDP = connUDP
 
 }
 
-func handleConnection(conn net.Conn) {
+func (c *Client) handleConnection() {
 	for {
-		msg, err := bufio.NewReader(conn).ReadString('\n')
+		msg, err := bufio.NewReader(c.connTCP).ReadBytes('\n') // Change to ReadBytes!
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
 
-		msg = strings.TrimSpace(string(msg))
-		fmt.Println(msg)
+		c.handleMsg(msg)
 
-		UDP, err := startUDPConnection()
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		defer UDP.connUDP.Close()
+	}
+}
 
-		fmt.Fprintf(conn, "Message Received! Your UDP port is "+fmt.Sprint(UDP.port)+"\n")
-
+func (c *Client) handleMsg(msg []byte) {
+	msgID, _ := strconv.Atoi(bytes.ReadByteBlockAsString(0, 2, msg))
+	switch msgID {
+	case message.HelloType:
+		c.startUDPConnection()
+		message.NewMessage().CONNECTION(c.connUDP.port).Send(c.connTCP)
 	}
 }
 
@@ -83,7 +95,10 @@ func main() {
 			fmt.Println(err)
 			return
 		}
-		go handleConnection(conn)
+		client := &Client{
+			connTCP: conn,
+		}
+		go client.handleConnection()
 	}
 
 }

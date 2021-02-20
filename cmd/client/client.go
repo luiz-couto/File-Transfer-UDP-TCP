@@ -30,7 +30,7 @@ func main() {
 		msg, _ := reader.ReadString('\n')
 		fmt.Fprintf(conn, msg+"\n")
 
-		resp, err := bufio.NewReader(conn).ReadString('\n')
+		resp, err := bufio.NewReader(conn).ReadString('\n') // Change to ReadBytes!
 		if err != nil {
 			fmt.Println(err)
 			return
