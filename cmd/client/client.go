@@ -12,12 +12,12 @@ import (
 )
 
 func handleMsg(msg []byte) {
-	msgID, _ := strconv.Atoi(bytes.ReadByteBlockAsString(0, 2, msg))
+	msgID := bytes.ReadByteBlockAsInt(0, 2, msg)
 	switch msgID {
 	case message.ConnectionType:
 		fmt.Println("Received CONNECTION")
-		port := bytes.ReadByteBlockAsString(2, 6, msg)
-		fmt.Println("Porto UDP is " + port)
+		port := bytes.ReadByteBlockAsInt(2, 6, msg)
+		fmt.Println("Porto UDP is " + strconv.Itoa(port))
 	}
 }
 
@@ -41,6 +41,7 @@ func main() {
 	for {
 
 		msg, err := bufio.NewReader(conn).ReadBytes('\n')
+		msg = msg[:len(msg)-1]
 		if err != nil {
 			fmt.Println(err)
 			return

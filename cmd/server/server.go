@@ -54,7 +54,8 @@ func (c *Client) startUDPConnection() {
 
 func (c *Client) handleConnection() {
 	for {
-		msg, err := bufio.NewReader(c.connTCP).ReadBytes('\n') // Change to ReadBytes!
+		msg, err := bufio.NewReader(c.connTCP).ReadBytes('\n')
+		msg = msg[:len(msg)-1]
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -64,7 +65,7 @@ func (c *Client) handleConnection() {
 }
 
 func (c *Client) handleMsg(msg []byte) {
-	msgID, _ := strconv.Atoi(bytes.ReadByteBlockAsString(0, 2, msg))
+	msgID := bytes.ReadByteBlockAsInt(0, 2, msg)
 	switch msgID {
 	case message.HelloType:
 		fmt.Println("Received HELLO")

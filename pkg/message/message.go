@@ -2,7 +2,6 @@ package message
 
 import (
 	"net"
-	"strconv"
 
 	"github.com/luiz-couto/File-Transfer-UDP-TCP/pkg/bytes"
 )
@@ -30,7 +29,7 @@ func NewMessage() *Message {
 
 //HELLO defines the HELLO message type
 func (msg *Message) HELLO() *Message {
-	id := bytes.CreateByteBlock(2, []byte(strconv.Itoa(HelloType)))
+	id := bytes.WriteIntAsBytes(2, HelloType)
 
 	msg.body = id
 	return msg
@@ -38,8 +37,8 @@ func (msg *Message) HELLO() *Message {
 
 //CONNECTION defines the HELLO message type
 func (msg *Message) CONNECTION(port int) *Message {
-	id := bytes.CreateByteBlock(2, []byte(strconv.Itoa(ConnectionType)))
-	bPort := bytes.CreateByteBlock(4, []byte(strconv.Itoa(port)))
+	id := bytes.WriteIntAsBytes(2, ConnectionType)
+	bPort := bytes.WriteIntAsBytes(4, port)
 
 	msg.body = append(id, bPort...)
 	return msg
@@ -47,9 +46,9 @@ func (msg *Message) CONNECTION(port int) *Message {
 
 //INFOFILE define the INFO FILE message type
 func (msg *Message) INFOFILE(fileName string, fileSize int) *Message {
-	id := bytes.CreateByteBlock(2, []byte(strconv.Itoa(InfoFileType)))
+	id := bytes.WriteIntAsBytes(2, InfoFileType)
 	bFileName := bytes.CreateByteBlock(15, []byte(fileName))
-	bFileSize := bytes.CreateByteBlock(8, []byte(strconv.Itoa(fileSize)))
+	bFileSize := bytes.WriteIntAsBytes(8, fileSize)
 
 	msg.body = append(id, bFileName...)
 	msg.body = append(msg.body, bFileSize...)
@@ -58,7 +57,7 @@ func (msg *Message) INFOFILE(fileName string, fileSize int) *Message {
 
 //OK defines the OK message type
 func (msg *Message) OK() *Message {
-	id := bytes.CreateByteBlock(2, []byte(strconv.Itoa(OKType)))
+	id := bytes.WriteIntAsBytes(2, OKType)
 
 	msg.body = id
 	return msg
@@ -66,7 +65,7 @@ func (msg *Message) OK() *Message {
 
 //FIM defines the FIM message type
 func (msg *Message) FIM() *Message {
-	id := bytes.CreateByteBlock(2, []byte(strconv.Itoa(FimType)))
+	id := bytes.WriteIntAsBytes(2, FimType)
 
 	msg.body = id
 	return msg
@@ -74,9 +73,10 @@ func (msg *Message) FIM() *Message {
 
 // FILE defines the FILE message type
 func (msg *Message) FILE(seqNumber int, payloadSize int, payload []byte) *Message {
-	id := bytes.CreateByteBlock(2, []byte(strconv.Itoa(FileType)))
-	bSeqNumber := bytes.CreateByteBlock(4, []byte(strconv.Itoa(seqNumber)))
-	bPayloadSize := bytes.CreateByteBlock(2, []byte(strconv.Itoa(payloadSize)))
+	id := bytes.WriteIntAsBytes(2, FileType)
+	bSeqNumber := bytes.WriteIntAsBytes(4, seqNumber)
+	bPayloadSize := bytes.WriteIntAsBytes(2, payloadSize)
+
 	bPayload := bytes.CreateByteBlock(payloadSize, payload)
 
 	msg.body = append(id, bSeqNumber...)
@@ -87,8 +87,8 @@ func (msg *Message) FILE(seqNumber int, payloadSize int, payload []byte) *Messag
 
 // ACK defines the ACK message type
 func (msg *Message) ACK(seqNumber int) *Message {
-	id := bytes.CreateByteBlock(2, []byte(strconv.Itoa(AckType)))
-	bSeqNumber := bytes.CreateByteBlock(4, []byte(strconv.Itoa(seqNumber)))
+	id := bytes.WriteIntAsBytes(2, AckType)
+	bSeqNumber := bytes.WriteIntAsBytes(4, seqNumber)
 
 	msg.body = append(id, bSeqNumber...)
 	return msg
