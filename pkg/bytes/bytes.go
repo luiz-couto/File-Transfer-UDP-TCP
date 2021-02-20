@@ -8,6 +8,8 @@ import (
 //CreateByteBlock DOC TODO
 func CreateByteBlock(tam int, body []byte) []byte {
 	if len(body) > tam {
+		fmt.Println(tam)
+		fmt.Println(string(body))
 		fmt.Println("body muito grande para o tamanho especificado.")
 		return nil
 	}

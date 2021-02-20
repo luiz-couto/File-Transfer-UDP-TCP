@@ -5,7 +5,21 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strconv"
+
+	"github.com/luiz-couto/File-Transfer-UDP-TCP/pkg/bytes"
+	"github.com/luiz-couto/File-Transfer-UDP-TCP/pkg/message"
 )
+
+func handleMsg(msg []byte) {
+	msgID, _ := strconv.Atoi(bytes.ReadByteBlockAsString(0, 2, msg))
+	switch msgID {
+	case message.ConnectionType:
+		fmt.Println("Received CONNECTION")
+		port := bytes.ReadByteBlockAsString(2, 6, msg)
+		fmt.Println("Porto UDP is " + port)
+	}
+}
 
 func main() {
 	args := os.Args
@@ -22,20 +36,16 @@ func main() {
 		return
 	}
 
+	message.NewMessage().HELLO().Send(conn)
+
 	for {
-		reader := bufio.NewReader(os.Stdin)
 
-		fmt.Print(">> ")
-
-		msg, _ := reader.ReadString('\n')
-		fmt.Fprintf(conn, msg+"\n")
-
-		resp, err := bufio.NewReader(conn).ReadString('\n') // Change to ReadBytes!
+		msg, err := bufio.NewReader(conn).ReadBytes('\n')
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
+		handleMsg(msg)
 
-		fmt.Print("[server] " + resp)
 	}
 }

@@ -59,9 +59,7 @@ func (c *Client) handleConnection() {
 			fmt.Println(err)
 			return
 		}
-
 		c.handleMsg(msg)
-
 	}
 }
 
@@ -69,6 +67,7 @@ func (c *Client) handleMsg(msg []byte) {
 	msgID, _ := strconv.Atoi(bytes.ReadByteBlockAsString(0, 2, msg))
 	switch msgID {
 	case message.HelloType:
+		fmt.Println("Received HELLO")
 		c.startUDPConnection()
 		message.NewMessage().CONNECTION(c.connUDP.port).Send(c.connTCP)
 	}
