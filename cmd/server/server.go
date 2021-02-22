@@ -13,7 +13,7 @@ import (
 
 // FileBuffer DOC TODO
 type FileBuffer struct {
-	fileSIze   int
+	fileSize   int
 	fileName   string
 	pkgBuckets [][]byte
 }
@@ -85,8 +85,12 @@ func (c *Client) handleMsg(msg []byte) {
 		fileName := bytes.ReadByteBlockAsString(2, 17, msg)
 		fileSize := bytes.ReadByteBlockAsInt(17, 25, msg)
 
-		c.fileBuffer.fileName = fileName
-		c.fileBuffer.fileSIze = fileSize
+		fileBuffer := &FileBuffer{
+			fileName: fileName,
+			fileSize: fileSize,
+		}
+
+		c.fileBuffer = fileBuffer
 
 		message.NewMessage().OK().Send(c.connTCP)
 	}

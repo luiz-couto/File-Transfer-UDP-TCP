@@ -72,6 +72,9 @@ func (c *Client) handleMsg(msg []byte) {
 		c.startUDPConnection(port)
 
 		message.NewMessage().INFOFILE(c.file.fileName, c.file.fileSize).Send(c.TCPconn)
+
+	case message.OKType:
+		fmt.Println("Received OK")
 	}
 }
 
