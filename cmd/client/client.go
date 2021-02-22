@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"strconv"
@@ -33,6 +34,20 @@ type Client struct {
 	file      *File
 }
 
+// ReadFile DOC TODO
+func ReadFile(fileName string) *File {
+	fileContent, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	return &File{
+		fileSize: len(fileContent),
+		fileName: fileName,
+		content:  fileContent,
+	}
+}
+
 func (c *Client) startUDPConnection(port int) {
 	connectTo := strings.Split(c.TCPconn.RemoteAddr().String(), ":")[0]
 
@@ -61,12 +76,14 @@ func (c *Client) handleMsg(msg []byte) {
 
 func main() {
 	args := os.Args
-	if len(args) != 3 {
-		fmt.Println("usage ./client <server_address> <port_number>")
+	if len(args) != 4 {
+		fmt.Println("usage ./client <server_address> <port_number> <file_name>")
 		return
 	}
 
 	connectTo := args[1] + ":" + args[2]
+
+	file := ReadFile(args[3])
 
 	conn, err := net.Dial("tcp", connectTo)
 	if err != nil {
@@ -87,6 +104,7 @@ func main() {
 
 		client := &Client{
 			TCPconn: conn,
+			file:    file,
 		}
 
 		client.handleMsg(msg)
