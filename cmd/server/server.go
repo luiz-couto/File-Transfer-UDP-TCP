@@ -11,10 +11,18 @@ import (
 	"github.com/luiz-couto/File-Transfer-UDP-TCP/pkg/message"
 )
 
+// FileBuffer DOC TODO
+type FileBuffer struct {
+	fileSIze   int
+	fileName   string
+	pkgBuckets [][]byte
+}
+
 //Client DOC TODO
 type Client struct {
-	connTCP net.Conn
-	connUDP *UDPConnection
+	connTCP    net.Conn
+	connUDP    *UDPConnection
+	fileBuffer *FileBuffer
 }
 
 //UDPConnection defines the udp connection object
@@ -71,6 +79,16 @@ func (c *Client) handleMsg(msg []byte) {
 		fmt.Println("Received HELLO")
 		c.startUDPConnection()
 		message.NewMessage().CONNECTION(c.connUDP.port).Send(c.connTCP)
+
+	case message.InfoFileType:
+		fmt.Println("Received INFO_FILE")
+		fileName := bytes.ReadByteBlockAsString(2, 17, msg)
+		fileSize := bytes.ReadByteBlockAsInt(17, 25, msg)
+
+		c.fileBuffer.fileName = fileName
+		c.fileBuffer.fileSIze = fileSize
+
+		message.NewMessage().OK().Send(c.connTCP)
 	}
 }
 

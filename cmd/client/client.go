@@ -71,6 +71,7 @@ func (c *Client) handleMsg(msg []byte) {
 		fmt.Println("Porto UDP is " + strconv.Itoa(port))
 		c.startUDPConnection(port)
 
+		message.NewMessage().INFOFILE(c.file.fileName, c.file.fileSize).Send(c.TCPconn)
 	}
 }
 
