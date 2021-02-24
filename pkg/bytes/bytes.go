@@ -75,3 +75,20 @@ func ReadByteBlockAsInt(start int, end int, body []byte) int {
 	}
 	return 0
 }
+
+// DivideInPackages DOC TODOD
+func DivideInPackages(content []byte, pkgSize int) [][]byte {
+	var divided [][]byte
+
+	for i := 0; i < len(content); i += pkgSize {
+		end := i + pkgSize
+
+		if end > len(content) {
+			end = len(content)
+		}
+
+		divided = append(divided, content[i:end])
+	}
+
+	return divided
+}
