@@ -77,7 +77,7 @@ func ReadByteBlockAsInt(start int, end int, body []byte) int {
 }
 
 // DivideInPackages DOC TODOD
-func DivideInPackages(content []byte, pkgSize int) [][]byte {
+func DivideInPackages(content []byte, pkgSize int) map[int][]byte {
 	var divided [][]byte
 
 	for i := 0; i < len(content); i += pkgSize {
@@ -90,5 +90,10 @@ func DivideInPackages(content []byte, pkgSize int) [][]byte {
 		divided = append(divided, content[i:end])
 	}
 
-	return divided
+	pkgs := make(map[int][]byte)
+	for idx, pkg := range divided {
+		pkgs[idx] = pkg
+	}
+
+	return pkgs
 }

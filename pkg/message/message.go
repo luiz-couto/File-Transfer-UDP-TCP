@@ -99,3 +99,8 @@ func (msg *Message) Send(conn net.Conn) {
 	sendMsg := append(msg.body, []byte("\n")...)
 	conn.Write(sendMsg)
 }
+
+// SendFile sends the pkg file to the given connection
+func (msg *Message) SendFile(conn *net.UDPConn) {
+	conn.Write(msg.body)
+}

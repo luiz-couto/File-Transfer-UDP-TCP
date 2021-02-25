@@ -11,11 +11,20 @@ import (
 	"github.com/luiz-couto/File-Transfer-UDP-TCP/pkg/message"
 )
 
+//maxBufferSize DOC TODO
+const maxBufferSize = 1008
+
+// Pkg DOC TODO
+type Pkg struct {
+	seqNumber int
+	payload   []byte
+}
+
 // FileBuffer DOC TODO
 type FileBuffer struct {
 	fileSize   int
 	fileName   string
-	pkgBuckets [][]byte
+	pkgBuckets [][]Pkg
 }
 
 //Client DOC TODO
@@ -63,7 +72,7 @@ func (c *Client) startUDPConnection() {
 func (c *Client) handleConnection() {
 	for {
 		msg, err := bufio.NewReader(c.connTCP).ReadBytes('\n')
-		msg = msg[:len(msg)-1]
+		//msg = msg[:len(msg)-1]
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -93,7 +102,65 @@ func (c *Client) handleMsg(msg []byte) {
 		c.fileBuffer = fileBuffer
 
 		message.NewMessage().OK().Send(c.connTCP)
+
+		c.receiveFile()
+
 	}
+}
+
+func (c *Client) receiveFile() {
+	totalLen := 0
+	for {
+		buffer := make([]byte, maxBufferSize)
+		n, _, err := c.connUDP.UDP.ReadFromUDP(buffer)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		msg := buffer[:n-1]
+		msgID := bytes.ReadByteBlockAsInt(0, 2, msg)
+		if msgID != message.FileType {
+			continue
+		}
+
+		fmt.Println("Received FILE")
+		seqNumber := bytes.ReadByteBlockAsInt(2, 6, msg)
+		payloadSize := bytes.ReadByteBlockAsInt(6, 8, msg)
+		payload := msg[8 : 8+payloadSize]
+
+		message.NewMessage().ACK(seqNumber).Send(c.connTCP)
+
+		c.addToPkgBucket(seqNumber, payload)
+		totalLen = totalLen + len(payload)
+
+		fmt.Println(totalLen)
+
+		// if totalLen == c.fileBuffer.fileSize {
+		// 	message.NewMessage().FIM().Send(c.connTCP)
+		// 	break
+		// }
+	}
+}
+
+func (c *Client) addToPkgBucket(seqNum int, payload []byte) {
+	newPkg := Pkg{
+		seqNumber: seqNum,
+		payload:   payload,
+	}
+
+	for _, bucket := range c.fileBuffer.pkgBuckets {
+		lastPkg := bucket[len(bucket)-1]
+		if seqNum == lastPkg.seqNumber+1 {
+			bucket = append(bucket, newPkg)
+			return
+		}
+	}
+
+	var newBucket []Pkg
+	newBucket = append(newBucket, newPkg)
+
+	c.fileBuffer.pkgBuckets = append(c.fileBuffer.pkgBuckets, newBucket)
 }
 
 func main() {

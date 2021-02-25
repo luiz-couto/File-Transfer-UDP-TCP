@@ -2,13 +2,17 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"os"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
+	"github.com/luiz-couto/File-Transfer-UDP-TCP/pkg/broker"
 	"github.com/luiz-couto/File-Transfer-UDP-TCP/pkg/bytes"
 	"github.com/luiz-couto/File-Transfer-UDP-TCP/pkg/message"
 )
@@ -23,7 +27,10 @@ type File struct {
 // SlidingWindow DOC TODO
 type SlidingWindow struct {
 	windowSize int
-	nextWindow []int
+	lostPkgs   []int
+	pkgs       map[int][]byte
+	nxtPkg     int
+	mutex      sync.Mutex
 }
 
 // Client DOC TODO
@@ -32,6 +39,48 @@ type Client struct {
 	TCPconn   net.Conn
 	SliWindow *SlidingWindow
 	file      *File
+	ack       *broker.Broker
+	end       chan bool
+}
+
+type worker struct {
+	source chan interface{}
+	quit   chan struct{}
+}
+
+type threadSafeSlice struct {
+	sync.Mutex
+	workers []*worker
+}
+
+func (slice *threadSafeSlice) push(w *worker) {
+	slice.Lock()
+	defer slice.Unlock()
+
+	slice.workers = append(slice.workers, w)
+}
+
+func (slice *threadSafeSlice) iter(routine func(*worker)) {
+	slice.Lock()
+	defer slice.Unlock()
+
+	for _, worker := range slice.workers {
+		routine(worker)
+	}
+}
+
+/*
+RemoveFromSlice return a new slice without any occurence of the
+target int t
+*/
+func RemoveFromSlice(vs []int, t int) []int {
+	var newSlice []int
+	for _, v := range vs {
+		if v != t {
+			newSlice = append(newSlice, v)
+		}
+	}
+	return newSlice
 }
 
 // ReadFile DOC TODO
@@ -61,6 +110,100 @@ func (c *Client) startUDPConnection(port int) {
 	c.UDPconn = udpConn
 }
 
+func (c *Client) getNextWindow() []int {
+	var nxtWin []int
+
+	for i := 0; i < c.SliWindow.windowSize; i++ {
+		if len(c.SliWindow.lostPkgs) > 0 {
+			nxtWin = append(nxtWin, c.SliWindow.lostPkgs[0])
+
+			c.SliWindow.mutex.Lock()
+			c.SliWindow.lostPkgs = RemoveFromSlice(c.SliWindow.lostPkgs, c.SliWindow.lostPkgs[0])
+			c.SliWindow.mutex.Unlock()
+
+			continue
+		}
+
+		if c.SliWindow.nxtPkg != len(c.SliWindow.pkgs) {
+			nxtWin = append(nxtWin, c.SliWindow.nxtPkg)
+			c.SliWindow.nxtPkg = c.SliWindow.nxtPkg + 1
+		}
+	}
+	return nxtWin
+}
+
+func (c *Client) checkNxtWindowEmpty(nxtWindow []int) bool {
+	for _, v := range nxtWindow {
+		if v != -1 {
+			return false
+		}
+	}
+	return true
+}
+
+func (c *Client) waitForAck(ctx context.Context, seqNum int, cancel context.CancelFunc) {
+	fmt.Println("Created thread " + strconv.Itoa(seqNum))
+	defer cancel()
+	msgCh := c.ack.Subscribe()
+	for {
+		select {
+		case rcvAck := <-msgCh:
+			fmt.Println("ACK -> " + strconv.Itoa(seqNum))
+			if rcvAck == seqNum {
+				fmt.Println("PASSSSOUU AQQQ -> " + "ACK -> " + strconv.Itoa(seqNum))
+				return
+			}
+
+		case <-ctx.Done():
+			fmt.Println("TIMEOUT: " + strconv.Itoa(seqNum))
+			c.SliWindow.mutex.Lock()
+			c.SliWindow.lostPkgs = append(c.SliWindow.lostPkgs, seqNum)
+			c.SliWindow.mutex.Unlock()
+			return
+		}
+	}
+
+}
+
+func (c *Client) sendNxtWindow(nxtWindow []int) {
+	for _, seqNum := range nxtWindow {
+		pkg := c.SliWindow.pkgs[seqNum]
+		message.NewMessage().FILE(seqNum, len(pkg), pkg).SendFile(c.UDPconn)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 1000*time.Millisecond)
+
+		go c.waitForAck(ctx, seqNum, cancel)
+	}
+}
+
+func (c *Client) startFileTransmission() {
+	pkgs := bytes.DivideInPackages(c.file.content, 1000)
+	wsize := len(pkgs) / 2
+
+	sliWin := &SlidingWindow{
+		windowSize: wsize,
+		lostPkgs:   []int{},
+		nxtPkg:     0,
+		pkgs:       pkgs,
+	}
+
+	c.SliWindow = sliWin
+
+	for {
+		nxtWin := c.getNextWindow()
+		if len(nxtWin) > 0 {
+			fmt.Println(nxtWin)
+		}
+		// select {
+		// case endTransmission := <-c.end:
+		// 	if endTransmission {
+		// 		break
+		// 	}
+		// }
+		c.sendNxtWindow(nxtWin)
+	}
+}
+
 func (c *Client) handleMsg(msg []byte) {
 	msgID := bytes.ReadByteBlockAsInt(0, 2, msg)
 	switch msgID {
@@ -75,6 +218,17 @@ func (c *Client) handleMsg(msg []byte) {
 
 	case message.OKType:
 		fmt.Println("Received OK")
+		go c.startFileTransmission()
+
+	case message.AckType:
+		fmt.Println("Received ACK")
+		seqNum := bytes.ReadByteBlockAsInt(2, 6, msg)
+		c.ack.Publish(seqNum)
+		return
+
+	case message.FimType:
+		fmt.Println("Received FIM")
+		c.end <- true
 	}
 }
 
@@ -97,18 +251,23 @@ func main() {
 
 	message.NewMessage().HELLO().Send(conn)
 
-	for {
+	ackbrk := broker.NewBroker()
+	go ackbrk.Start()
 
+	client := &Client{
+		TCPconn: conn,
+		file:    file,
+		ack:     ackbrk,
+		end:     make(chan bool),
+	}
+
+	for {
+		fmt.Println("Estou escutando...")
 		msg, err := bufio.NewReader(conn).ReadBytes('\n')
 		msg = msg[:len(msg)-1]
 		if err != nil {
 			fmt.Println(err)
 			return
-		}
-
-		client := &Client{
-			TCPconn: conn,
-			file:    file,
 		}
 
 		client.handleMsg(msg)
