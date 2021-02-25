@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/luiz-couto/File-Transfer-UDP-TCP/pkg/broker"
 	"github.com/luiz-couto/File-Transfer-UDP-TCP/pkg/bytes"
 	"github.com/luiz-couto/File-Transfer-UDP-TCP/pkg/message"
 )
@@ -39,12 +38,12 @@ type Client struct {
 	TCPconn   net.Conn
 	SliWindow *SlidingWindow
 	file      *File
-	ack       *broker.Broker
 	end       chan bool
+	tss       *threadSafeSlice
 }
 
 type worker struct {
-	source chan interface{}
+	source chan int
 	quit   chan struct{}
 }
 
@@ -53,14 +52,14 @@ type threadSafeSlice struct {
 	workers []*worker
 }
 
-func (slice *threadSafeSlice) push(w *worker) {
+func (slice *threadSafeSlice) Push(w *worker) {
 	slice.Lock()
 	defer slice.Unlock()
 
 	slice.workers = append(slice.workers, w)
 }
 
-func (slice *threadSafeSlice) iter(routine func(*worker)) {
+func (slice *threadSafeSlice) Iter(routine func(*worker)) {
 	slice.Lock()
 	defer slice.Unlock()
 
@@ -141,38 +140,44 @@ func (c *Client) checkNxtWindowEmpty(nxtWindow []int) bool {
 	return true
 }
 
-func (c *Client) waitForAck(ctx context.Context, seqNum int, cancel context.CancelFunc) {
-	fmt.Println("Created thread " + strconv.Itoa(seqNum))
-	defer cancel()
-	msgCh := c.ack.Subscribe()
-	for {
-		select {
-		case rcvAck := <-msgCh:
-			fmt.Println("ACK -> " + strconv.Itoa(seqNum))
-			if rcvAck == seqNum {
-				fmt.Println("PASSSSOUU AQQQ -> " + "ACK -> " + strconv.Itoa(seqNum))
+func (c *Client) waitForAck(ctx context.Context, seqNum int, cancel context.CancelFunc, w *worker) {
+	w.source = make(chan int, 10)
+
+	go func() {
+		fmt.Println("Started thread " + strconv.Itoa(seqNum))
+		defer cancel()
+		for {
+			select {
+			case rcvAck := <-w.source:
+				fmt.Println("ACK -> " + strconv.Itoa(rcvAck) + " / Thread " + strconv.Itoa(seqNum))
+				if rcvAck == seqNum {
+					fmt.Println(time.Now().Format(time.RFC850) + "PASSSSOUU AQQQ -> " + "ACK -> " + strconv.Itoa(seqNum))
+					return
+				}
+
+			case <-ctx.Done():
+				fmt.Println("TIMEOUT: " + strconv.Itoa(seqNum))
+				c.SliWindow.mutex.Lock()
+				c.SliWindow.lostPkgs = append(c.SliWindow.lostPkgs, seqNum)
+				c.SliWindow.mutex.Unlock()
 				return
 			}
-
-		case <-ctx.Done():
-			fmt.Println("TIMEOUT: " + strconv.Itoa(seqNum))
-			c.SliWindow.mutex.Lock()
-			c.SliWindow.lostPkgs = append(c.SliWindow.lostPkgs, seqNum)
-			c.SliWindow.mutex.Unlock()
-			return
 		}
-	}
+	}()
 
 }
 
 func (c *Client) sendNxtWindow(nxtWindow []int) {
 	for _, seqNum := range nxtWindow {
 		pkg := c.SliWindow.pkgs[seqNum]
+
+		ctx, cancel := context.WithTimeout(context.Background(), 3200*time.Millisecond)
+
+		w := &worker{}
+		c.waitForAck(ctx, seqNum, cancel, w)
+		c.tss.Push(w)
+
 		message.NewMessage().FILE(seqNum, len(pkg), pkg).SendFile(c.UDPconn)
-
-		ctx, cancel := context.WithTimeout(context.Background(), 1000*time.Millisecond)
-
-		go c.waitForAck(ctx, seqNum, cancel)
 	}
 }
 
@@ -187,10 +192,16 @@ func (c *Client) startFileTransmission() {
 		pkgs:       pkgs,
 	}
 
+	tss := &threadSafeSlice{
+		workers: []*worker{},
+	}
+
 	c.SliWindow = sliWin
+	c.tss = tss
 
 	for {
 		nxtWin := c.getNextWindow()
+		time.Sleep(100 * time.Millisecond)
 		if len(nxtWin) > 0 {
 			fmt.Println(nxtWin)
 		}
@@ -223,7 +234,10 @@ func (c *Client) handleMsg(msg []byte) {
 	case message.AckType:
 		fmt.Println("Received ACK")
 		seqNum := bytes.ReadByteBlockAsInt(2, 6, msg)
-		c.ack.Publish(seqNum)
+		//c.ack.Publish(seqNum)
+
+		c.tss.Iter(func(w *worker) { w.source <- seqNum })
+
 		return
 
 	case message.FimType:
@@ -251,13 +265,9 @@ func main() {
 
 	message.NewMessage().HELLO().Send(conn)
 
-	ackbrk := broker.NewBroker()
-	go ackbrk.Start()
-
 	client := &Client{
 		TCPconn: conn,
 		file:    file,
-		ack:     ackbrk,
 		end:     make(chan bool),
 	}
 
