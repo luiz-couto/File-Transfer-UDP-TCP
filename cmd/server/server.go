@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/luiz-couto/File-Transfer-UDP-TCP/pkg/bytes"
 	"github.com/luiz-couto/File-Transfer-UDP-TCP/pkg/message"
@@ -132,6 +133,7 @@ func (c *Client) receiveFile() {
 		payload := msg[8 : 8+payloadSize]
 
 		message.NewMessage().ACK(seqNumber).Send(c.connTCP)
+		time.Sleep(50 * time.Millisecond)
 
 		if _, ok := c.fileBuffer.rcvLog[seqNumber]; ok {
 			continue
@@ -143,10 +145,11 @@ func (c *Client) receiveFile() {
 
 		fmt.Println(totalLen)
 
-		// if totalLen == c.fileBuffer.fileSize {
-		// 	message.NewMessage().FIM().Send(c.connTCP)
-		// 	break
-		// }
+		if totalLen == c.fileBuffer.fileSize {
+			message.NewMessage().FIM().Send(c.connTCP)
+			time.Sleep(50 * time.Millisecond)
+			break
+		}
 	}
 }
 

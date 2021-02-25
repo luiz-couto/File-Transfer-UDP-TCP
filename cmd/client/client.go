@@ -16,6 +16,8 @@ import (
 	"github.com/luiz-couto/File-Transfer-UDP-TCP/pkg/message"
 )
 
+var globalQuit chan struct{} = make(chan struct{})
+
 // File DOC TODO
 type File struct {
 	fileSize int
@@ -34,12 +36,12 @@ type SlidingWindow struct {
 
 // Client DOC TODO
 type Client struct {
-	UDPconn   *net.UDPConn
-	TCPconn   net.Conn
-	SliWindow *SlidingWindow
-	file      *File
-	end       chan bool
-	tss       *threadSafeSlice
+	UDPconn         *net.UDPConn
+	TCPconn         net.Conn
+	SliWindow       *SlidingWindow
+	file            *File
+	tss             *threadSafeSlice
+	endTransmission bool
 }
 
 type worker struct {
@@ -142,6 +144,7 @@ func (c *Client) checkNxtWindowEmpty(nxtWindow []int) bool {
 
 func (c *Client) waitForAck(ctx context.Context, seqNum int, cancel context.CancelFunc, w *worker) {
 	w.source = make(chan int, 10)
+	w.quit = globalQuit
 
 	go func() {
 		fmt.Println("Started thread " + strconv.Itoa(seqNum))
@@ -160,6 +163,9 @@ func (c *Client) waitForAck(ctx context.Context, seqNum int, cancel context.Canc
 				c.SliWindow.mutex.Lock()
 				c.SliWindow.lostPkgs = append(c.SliWindow.lostPkgs, seqNum)
 				c.SliWindow.mutex.Unlock()
+				return
+
+			case <-w.quit:
 				return
 			}
 		}
@@ -200,17 +206,20 @@ func (c *Client) startFileTransmission() {
 	c.tss = tss
 
 	for {
+
+		if c.endTransmission {
+			fmt.Println("ENDING CONNECTION")
+			c.UDPconn.Close()
+			c.TCPconn.Close()
+			break
+		}
+
 		nxtWin := c.getNextWindow()
 		time.Sleep(100 * time.Millisecond)
 		if len(nxtWin) > 0 {
 			fmt.Println(nxtWin)
 		}
-		// select {
-		// case endTransmission := <-c.end:
-		// 	if endTransmission {
-		// 		break
-		// 	}
-		// }
+
 		c.sendNxtWindow(nxtWin)
 	}
 }
@@ -242,7 +251,13 @@ func (c *Client) handleMsg(msg []byte) {
 
 	case message.FimType:
 		fmt.Println("Received FIM")
-		c.end <- true
+		close(globalQuit)
+
+		c.tss.Mutex.Lock()
+		c.SliWindow.lostPkgs = []int{}
+		c.tss.Mutex.Unlock()
+
+		c.endTransmission = true
 	}
 }
 
@@ -266,15 +281,16 @@ func main() {
 	message.NewMessage().HELLO().Send(conn)
 
 	client := &Client{
-		TCPconn: conn,
-		file:    file,
-		end:     make(chan bool),
+		TCPconn:         conn,
+		file:            file,
+		endTransmission: false,
 	}
 
 	for {
+
 		fmt.Println("Estou escutando...")
 		msg, err := bufio.NewReader(conn).ReadBytes('\n')
-		msg = msg[:len(msg)-1]
+
 		if err != nil {
 			fmt.Println(err)
 			return
