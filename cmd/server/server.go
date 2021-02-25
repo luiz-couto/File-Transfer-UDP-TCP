@@ -25,6 +25,7 @@ type FileBuffer struct {
 	fileSize   int
 	fileName   string
 	pkgBuckets [][]Pkg
+	rcvLog     map[int]bool
 }
 
 //Client DOC TODO
@@ -97,6 +98,7 @@ func (c *Client) handleMsg(msg []byte) {
 		fileBuffer := &FileBuffer{
 			fileName: fileName,
 			fileSize: fileSize,
+			rcvLog:   make(map[int]bool),
 		}
 
 		c.fileBuffer = fileBuffer
@@ -131,8 +133,13 @@ func (c *Client) receiveFile() {
 
 		message.NewMessage().ACK(seqNumber).Send(c.connTCP)
 
+		if _, ok := c.fileBuffer.rcvLog[seqNumber]; ok {
+			continue
+		}
+
 		c.addToPkgBucket(seqNumber, payload)
 		totalLen = totalLen + len(payload)
+		c.fileBuffer.rcvLog[seqNumber] = true
 
 		fmt.Println(totalLen)
 
