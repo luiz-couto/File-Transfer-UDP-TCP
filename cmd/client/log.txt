@@ -1,0 +1,426 @@
+Estou escutando...
+Received CONNECTION
+Porto UDP is 34949
+Estou escutando...
+Received OK
+Estou escutando...
+Started thread 0
+Started thread 1
+Started thread 3
+Started thread 2
+Started thread 6
+Started thread 4
+Started thread 5
+Received ACK
+[7 0 0 0 0 0 255]
+Estou escutando...
+Friday, 26-Feb-21 19:50:32 -03PASSSSOUU AQQQ -> ACK -> 0
+Started thread 7
+TIMEOUT: 2
+TIMEOUT: 5
+TIMEOUT: 6
+TIMEOUT: 3
+TIMEOUT: 4
+Started thread 2
+TIMEOUT: 1
+Started thread 5
+Started thread 6
+Started thread 3
+Started thread 1
+Started thread 4
+TIMEOUT: 7
+Started thread 7
+Received ACK
+[7 0 5 0 0 0 255]
+Estou escutando...
+Friday, 26-Feb-21 19:50:36 -03PASSSSOUU AQQQ -> ACK -> 5
+Started thread 8
+Received ACK
+[7 0 8 0 0 0 255]
+Estou escutando...
+Friday, 26-Feb-21 19:50:36 -03PASSSSOUU AQQQ -> ACK -> 8
+Started thread 9
+Received ACK
+[7 0 9 0 0 0 255]
+Estou escutando...
+Friday, 26-Feb-21 19:50:36 -03PASSSSOUU AQQQ -> ACK -> 9
+Started thread 10
+TIMEOUT: 2
+TIMEOUT: 6
+TIMEOUT: 3
+Started thread 6
+TIMEOUT: 4
+TIMEOUT: 1
+Started thread 2
+Started thread 1
+Started thread 4
+Started thread 3
+Received ACK
+[7 0 6 0 0 0 255]
+Estou escutando...
+Friday, 26-Feb-21 19:50:39 -03PASSSSOUU AQQQ -> ACK -> 6
+Started thread 11
+TIMEOUT: 7
+Started thread 7
+Received ACK
+[7 0 2 0 0 0 255]
+Estou escutando...
+Friday, 26-Feb-21 19:50:39 -03PASSSSOUU AQQQ -> ACK -> 2
+Started thread 12
+TIMEOUT: 10
+Started thread 10
+TIMEOUT: 1
+TIMEOUT: 3
+TIMEOUT: 4
+Started thread 1
+Started thread 3
+Started thread 4
+TIMEOUT: 11
+Started thread 11
+TIMEOUT: 7
+Started thread 7
+TIMEOUT: 12
+Started thread 12
+TIMEOUT: 10
+Started thread 10
+Received ACK
+[7 0 7 0 0 0 255]
+Estou escutando...
+Friday, 26-Feb-21 19:50:43 -03PASSSSOUU AQQQ -> ACK -> 7
+Started thread 13
+TIMEOUT: 3
+TIMEOUT: 1
+TIMEOUT: 4
+Started thread 3
+Started thread 1
+Started thread 4
+TIMEOUT: 11
+Started thread 11
+TIMEOUT: 12
+Started thread 12
+TIMEOUT: 10
+Started thread 10
+TIMEOUT: 13
+Started thread 13
+TIMEOUT: 4
+TIMEOUT: 3
+TIMEOUT: 1
+Started thread 4
+Started thread 3
+Started thread 1
+TIMEOUT: 11
+Started thread 11
+TIMEOUT: 12
+Started thread 12
+TIMEOUT: 10
+Started thread 10
+TIMEOUT: 13
+Started thread 13
+TIMEOUT: 4
+Started thread 4
+TIMEOUT: 3
+TIMEOUT: 1
+Started thread 3
+Started thread 1
+TIMEOUT: 11
+Started thread 11
+TIMEOUT: 12
+Started thread 12
+TIMEOUT: 10
+Started thread 10
+TIMEOUT: 13
+Started thread 13
+TIMEOUT: 4
+Started thread 4
+TIMEOUT: 3
+TIMEOUT: 1
+Started thread 3
+Started thread 1
+TIMEOUT: 11
+Started thread 11
+TIMEOUT: 12
+Started thread 12
+TIMEOUT: 10
+Started thread 10
+TIMEOUT: 13
+Started thread 13
+TIMEOUT: 4
+Started thread 4
+TIMEOUT: 1
+TIMEOUT: 3
+Started thread 1
+Started thread 3
+TIMEOUT: 11
+Started thread 11
+TIMEOUT: 12
+Started thread 12
+TIMEOUT: 10
+Started thread 10
+TIMEOUT: 13
+Started thread 13
+TIMEOUT: 4
+Started thread 4
+TIMEOUT: 3
+TIMEOUT: 1
+Started thread 3
+Started thread 1
+TIMEOUT: 11
+Started thread 11
+TIMEOUT: 12
+Started thread 12
+TIMEOUT: 10
+Started thread 10
+TIMEOUT: 13
+Started thread 13
+TIMEOUT: 4
+Started thread 4
+TIMEOUT: 3
+Started thread 3
+TIMEOUT: 1
+Started thread 1
+TIMEOUT: 11
+Started thread 11
+TIMEOUT: 12
+Started thread 12
+TIMEOUT: 10
+Started thread 10
+TIMEOUT: 13
+Started thread 13
+TIMEOUT: 4
+Started thread 4
+TIMEOUT: 1
+TIMEOUT: 3
+Started thread 1
+Started thread 3
+TIMEOUT: 11
+Started thread 11
+TIMEOUT: 12
+Started thread 12
+TIMEOUT: 10
+Started thread 10
+TIMEOUT: 13
+Started thread 13
+TIMEOUT: 4
+Started thread 4
+TIMEOUT: 3
+TIMEOUT: 1
+Started thread 3
+Started thread 1
+TIMEOUT: 11
+Started thread 11
+TIMEOUT: 12
+Started thread 12
+TIMEOUT: 10
+Started thread 10
+TIMEOUT: 13
+Started thread 13
+TIMEOUT: 4
+Started thread 4
+TIMEOUT: 3
+TIMEOUT: 1
+Started thread 3
+Started thread 1
+TIMEOUT: 11
+Started thread 11
+TIMEOUT: 12
+Started thread 12
+TIMEOUT: 10
+Started thread 10
+TIMEOUT: 13
+Started thread 13
+TIMEOUT: 4
+Started thread 4
+TIMEOUT: 1
+TIMEOUT: 3
+Started thread 1
+Started thread 3
+TIMEOUT: 11
+Started thread 11
+TIMEOUT: 12
+Started thread 12
+TIMEOUT: 10
+Started thread 10
+TIMEOUT: 13
+Started thread 13
+TIMEOUT: 4
+Started thread 4
+TIMEOUT: 3
+TIMEOUT: 1
+Started thread 3
+Started thread 1
+TIMEOUT: 11
+Started thread 11
+TIMEOUT: 12
+Started thread 12
+TIMEOUT: 10
+Started thread 10
+TIMEOUT: 13
+Started thread 13
+TIMEOUT: 4
+Started thread 4
+TIMEOUT: 3
+Started thread 3
+TIMEOUT: 1
+Started thread 1
+TIMEOUT: 11
+Started thread 11
+TIMEOUT: 12
+Started thread 12
+TIMEOUT: 10
+Started thread 10
+TIMEOUT: 13
+Started thread 13
+TIMEOUT: 4
+Started thread 4
+TIMEOUT: 3
+TIMEOUT: 1
+Started thread 3
+Started thread 1
+TIMEOUT: 11
+Started thread 11
+TIMEOUT: 12
+Started thread 12
+TIMEOUT: 10
+Started thread 10
+TIMEOUT: 13
+Started thread 13
+TIMEOUT: 4
+Started thread 4
+TIMEOUT: 3
+TIMEOUT: 1
+Started thread 3
+Started thread 1
+TIMEOUT: 11
+Started thread 11
+TIMEOUT: 12
+Started thread 12
+TIMEOUT: 10
+Started thread 10
+TIMEOUT: 13
+Started thread 13
+TIMEOUT: 4
+Started thread 4
+TIMEOUT: 3
+TIMEOUT: 1
+Started thread 3
+Started thread 1
+TIMEOUT: 11
+Started thread 11
+TIMEOUT: 12
+Started thread 12
+TIMEOUT: 10
+Started thread 10
+TIMEOUT: 13
+Started thread 13
+TIMEOUT: 4
+Started thread 4
+TIMEOUT: 1
+TIMEOUT: 3
+Started thread 1
+Started thread 3
+TIMEOUT: 11
+Started thread 11
+TIMEOUT: 12
+Started thread 12
+TIMEOUT: 10
+Started thread 10
+TIMEOUT: 13
+Started thread 13
+TIMEOUT: 4
+Started thread 4
+TIMEOUT: 1
+TIMEOUT: 3
+Started thread 1
+Started thread 3
+TIMEOUT: 11
+Started thread 11
+TIMEOUT: 12
+Started thread 12
+TIMEOUT: 10
+Started thread 10
+TIMEOUT: 13
+Started thread 13
+TIMEOUT: 4
+Started thread 4
+TIMEOUT: 1
+TIMEOUT: 3
+Started thread 1
+Started thread 3
+TIMEOUT: 11
+Started thread 11
+TIMEOUT: 12
+Started thread 12
+TIMEOUT: 10
+Started thread 10
+TIMEOUT: 13
+Started thread 13
+TIMEOUT: 4
+Started thread 4
+TIMEOUT: 1
+TIMEOUT: 3
+Started thread 1
+Started thread 3
+TIMEOUT: 11
+Started thread 11
+TIMEOUT: 12
+Started thread 12
+TIMEOUT: 10
+Started thread 10
+TIMEOUT: 13
+Started thread 13
+TIMEOUT: 4
+Started thread 4
+TIMEOUT: 3
+TIMEOUT: 1
+Started thread 3
+Started thread 1
+TIMEOUT: 11
+Started thread 11
+TIMEOUT: 12
+Started thread 12
+TIMEOUT: 10
+Started thread 10
+TIMEOUT: 13
+Started thread 13
+TIMEOUT: 4
+Started thread 4
+TIMEOUT: 1
+TIMEOUT: 3
+Started thread 1
+Started thread 3
+TIMEOUT: 11
+Started thread 11
+TIMEOUT: 12
+Started thread 12
+TIMEOUT: 10
+Started thread 10
+TIMEOUT: 13
+Started thread 13
+TIMEOUT: 4
+Started thread 4
+TIMEOUT: 3
+TIMEOUT: 1
+Started thread 3
+Started thread 1
+TIMEOUT: 11
+Started thread 11
+TIMEOUT: 12
+Started thread 12
+TIMEOUT: 10
+Started thread 10
+TIMEOUT: 13
+Started thread 13
+TIMEOUT: 4
+Started thread 4
+TIMEOUT: 3
+TIMEOUT: 1
+Started thread 3
+Started thread 1
+TIMEOUT: 11
+Started thread 11
+TIMEOUT: 12
+Started thread 12
+TIMEOUT: 10
+Started thread 10
+TIMEOUT: 13
+Started thread 13

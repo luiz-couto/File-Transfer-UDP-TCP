@@ -44,6 +44,7 @@ type Client struct {
 	SliWindow       *SlidingWindow
 	file            *File
 	tss             *broker.ThreadSafeSlice
+	rcvAck          chan struct{}
 	endTransmission bool
 }
 
@@ -95,13 +96,13 @@ func (c *Client) getNextWindow() []int {
 	defer c.SliWindow.mutex.Unlock()
 
 	for i := 0; i < c.SliWindow.windowSize; i++ {
-		if len(c.SliWindow.lostPkgs) > 0 {
-			nxtWin = append(nxtWin, c.SliWindow.lostPkgs[0])
+		// if len(c.SliWindow.lostPkgs) > 0 {
+		// 	nxtWin = append(nxtWin, c.SliWindow.lostPkgs[0])
 
-			c.SliWindow.lostPkgs = RemoveFromSlice(c.SliWindow.lostPkgs, c.SliWindow.lostPkgs[0])
+		// 	c.SliWindow.lostPkgs = RemoveFromSlice(c.SliWindow.lostPkgs, c.SliWindow.lostPkgs[0])
 
-			continue
-		}
+		// 	continue
+		// }
 
 		if c.SliWindow.nxtPkg != len(c.SliWindow.pkgs) {
 			nxtWin = append(nxtWin, c.SliWindow.nxtPkg)
@@ -123,7 +124,9 @@ func (c *Client) waitForAck(ctx context.Context, seqNum int, cancel context.Canc
 			case rcvAck := <-w.Source:
 				//fmt.Println("ACK -> " + strconv.Itoa(rcvAck) + " / Thread " + strconv.Itoa(seqNum))
 				if rcvAck == seqNum {
+					c.SliWindow.mutex.Lock()
 					fmt.Println(time.Now().Format(time.RFC850) + "PASSSSOUU AQQQ -> " + "ACK -> " + strconv.Itoa(seqNum))
+					c.rcvAck <- struct{}{}
 					return
 				}
 
@@ -132,7 +135,8 @@ func (c *Client) waitForAck(ctx context.Context, seqNum int, cancel context.Canc
 
 				c.SliWindow.mutex.Lock()
 				c.SliWindow.lostPkgs = append(c.SliWindow.lostPkgs, seqNum)
-				c.SliWindow.mutex.Unlock()
+
+				c.rcvAck <- struct{}{}
 
 				return
 
@@ -143,8 +147,8 @@ func (c *Client) waitForAck(ctx context.Context, seqNum int, cancel context.Canc
 	}()
 }
 
-func (c *Client) sendNxtWindow(nxtWindow []int) {
-	for _, seqNum := range nxtWindow {
+func (c *Client) sendFirstWindow(firstWindow []int) {
+	for _, seqNum := range firstWindow {
 		pkg := c.SliWindow.pkgs[seqNum]
 
 		ctx, cancel := context.WithTimeout(context.Background(), 3200*time.Millisecond)
@@ -155,6 +159,33 @@ func (c *Client) sendNxtWindow(nxtWindow []int) {
 
 		message.NewMessage().FILE(seqNum, len(pkg), pkg).SendFile(c.UDPconn)
 	}
+}
+
+func (c *Client) sendNxtPkg() {
+	defer c.SliWindow.mutex.Unlock()
+
+	var nxtSeqNum int
+
+	if len(c.SliWindow.lostPkgs) > 0 {
+		nxtSeqNum = c.SliWindow.lostPkgs[0]
+		c.SliWindow.lostPkgs = RemoveFromSlice(c.SliWindow.lostPkgs, c.SliWindow.lostPkgs[0])
+	} else {
+		if c.SliWindow.nxtPkg != len(c.SliWindow.pkgs) {
+			nxtSeqNum = c.SliWindow.nxtPkg
+			c.SliWindow.nxtPkg = c.SliWindow.nxtPkg + 1
+		} else {
+			return
+		}
+	}
+
+	pkg := c.SliWindow.pkgs[nxtSeqNum]
+	ctx, cancel := context.WithTimeout(context.Background(), 3200*time.Millisecond)
+
+	w := &broker.Worker{}
+	c.waitForAck(ctx, nxtSeqNum, cancel, w)
+	c.tss.Push(w)
+
+	message.NewMessage().FILE(nxtSeqNum, len(pkg), pkg).SendFile(c.UDPconn)
 }
 
 func (c *Client) startFileTransmission() {
@@ -176,22 +207,21 @@ func (c *Client) startFileTransmission() {
 	c.SliWindow = sliWin
 	c.tss = tss
 
+	firstWin := c.getNextWindow()
+	c.sendFirstWindow(firstWin)
+
 	for {
 
-		if c.endTransmission {
+		select {
+		case <-c.rcvAck:
+			c.sendNxtPkg()
+
+		case <-globalQuit:
 			fmt.Println("ENDING CONNECTION")
 			c.UDPconn.Close()
 			c.TCPconn.Close()
-			break
+			return
 		}
-
-		nxtWin := c.getNextWindow()
-		//time.Sleep(100 * time.Millisecond)
-		if len(nxtWin) > 0 {
-			fmt.Println(nxtWin)
-		}
-
-		c.sendNxtWindow(nxtWin)
 	}
 }
 
@@ -255,6 +285,7 @@ func main() {
 		TCPconn:         conn,
 		file:            file,
 		endTransmission: false,
+		rcvAck:          make(chan struct{}),
 	}
 
 	for {
