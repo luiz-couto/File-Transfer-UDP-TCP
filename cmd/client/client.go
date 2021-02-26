@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/luiz-couto/File-Transfer-UDP-TCP/pkg/broker"
 	"github.com/luiz-couto/File-Transfer-UDP-TCP/pkg/bytes"
 	"github.com/luiz-couto/File-Transfer-UDP-TCP/pkg/message"
 )
@@ -42,7 +43,7 @@ type Client struct {
 	TCPconn         net.Conn
 	SliWindow       *SlidingWindow
 	file            *File
-	tss             *ThreadSafeSlice
+	tss             *broker.ThreadSafeSlice
 	endTransmission bool
 }
 
@@ -109,16 +110,16 @@ func (c *Client) getNextWindow() []int {
 	return nxtWin
 }
 
-func (c *Client) waitForAck(ctx context.Context, seqNum int, cancel context.CancelFunc, w *Worker) {
-	w.source = make(chan int, 1000)
-	w.quit = globalQuit
+func (c *Client) waitForAck(ctx context.Context, seqNum int, cancel context.CancelFunc, w *broker.Worker) {
+	w.Source = make(chan int, 1000)
+	w.Quit = globalQuit
 
 	go func() {
 		fmt.Println("Started thread " + strconv.Itoa(seqNum))
 		defer cancel()
 		for {
 			select {
-			case rcvAck := <-w.source:
+			case rcvAck := <-w.Source:
 				//fmt.Println("ACK -> " + strconv.Itoa(rcvAck) + " / Thread " + strconv.Itoa(seqNum))
 				if rcvAck == seqNum {
 					fmt.Println(time.Now().Format(time.RFC850) + "PASSSSOUU AQQQ -> " + "ACK -> " + strconv.Itoa(seqNum))
@@ -134,7 +135,7 @@ func (c *Client) waitForAck(ctx context.Context, seqNum int, cancel context.Canc
 
 				return
 
-			case <-w.quit:
+			case <-w.Quit:
 				return
 			}
 		}
@@ -147,7 +148,7 @@ func (c *Client) sendNxtWindow(nxtWindow []int) {
 
 		ctx, cancel := context.WithTimeout(context.Background(), 3200*time.Millisecond)
 
-		w := &Worker{}
+		w := &broker.Worker{}
 		c.waitForAck(ctx, seqNum, cancel, w)
 		c.tss.Push(w)
 
@@ -158,6 +159,9 @@ func (c *Client) sendNxtWindow(nxtWindow []int) {
 func (c *Client) startFileTransmission() {
 	pkgs := bytes.DivideInPackages(c.file.content, 1000)
 	wsize := len(pkgs) / 2
+	if wsize > 7 {
+		wsize = 7
+	}
 
 	sliWin := &SlidingWindow{
 		windowSize: wsize,
@@ -166,9 +170,7 @@ func (c *Client) startFileTransmission() {
 		pkgs:       pkgs,
 	}
 
-	tss := &ThreadSafeSlice{
-		workers: []*Worker{},
-	}
+	tss := broker.NewBroker()
 
 	c.SliWindow = sliWin
 	c.tss = tss
@@ -183,7 +185,7 @@ func (c *Client) startFileTransmission() {
 		}
 
 		nxtWin := c.getNextWindow()
-		time.Sleep(100 * time.Millisecond)
+		//time.Sleep(100 * time.Millisecond)
 		if len(nxtWin) > 0 {
 			fmt.Println(nxtWin)
 		}
@@ -213,7 +215,7 @@ func (c *Client) handleMsg(msg []byte) {
 		fmt.Println(msg)
 		seqNum := bytes.ReadByteBlockAsInt(2, 6, msg)
 
-		c.tss.Iter(func(w *Worker) { w.source <- seqNum })
+		c.tss.Iter(func(w *broker.Worker) { w.Source <- seqNum })
 
 		return
 

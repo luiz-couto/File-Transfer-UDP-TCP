@@ -1,17 +1,24 @@
-package main
+package broker
 
 import "sync"
 
 // Worker DOC TODO
 type Worker struct {
-	source chan int
-	quit   chan struct{}
+	Source chan int
+	Quit   chan struct{}
 }
 
 // ThreadSafeSlice DOC TODO
 type ThreadSafeSlice struct {
 	sync.Mutex
-	workers []*Worker
+	Workers []*Worker
+}
+
+// NewBroker DOC TODO
+func NewBroker() *ThreadSafeSlice {
+	return &ThreadSafeSlice{
+		Workers: []*Worker{},
+	}
 }
 
 // Push DOC TODO
@@ -19,7 +26,7 @@ func (slice *ThreadSafeSlice) Push(w *Worker) {
 	slice.Lock()
 	defer slice.Unlock()
 
-	slice.workers = append(slice.workers, w)
+	slice.Workers = append(slice.Workers, w)
 }
 
 // Iter DOC TODO
@@ -27,7 +34,7 @@ func (slice *ThreadSafeSlice) Iter(routine func(*Worker)) {
 	slice.Lock()
 	defer slice.Unlock()
 
-	for _, worker := range slice.workers {
+	for _, worker := range slice.Workers {
 		routine(worker)
 	}
 }

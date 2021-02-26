@@ -141,7 +141,7 @@ func (c *Client) receiveFile() {
 		payload := msg[8 : 8+payloadSize]
 
 		message.NewMessage().ACK(seqNumber).Send(c.connTCP)
-		time.Sleep(100 * time.Millisecond)
+		//time.Sleep(100 * time.Millisecond)
 
 		if _, ok := c.fileBuffer.rcvLog[seqNumber]; ok {
 			continue
