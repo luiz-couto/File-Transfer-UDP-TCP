@@ -3,8 +3,11 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strconv"
 	"time"
 
@@ -74,7 +77,12 @@ func (c *Client) startUDPConnection() {
 func (c *Client) handleConnection() {
 	for {
 		msg, err := bufio.NewReader(c.connTCP).ReadBytes('\n')
-		//msg = msg[:len(msg)-1]
+
+		if len(msg) == 0 {
+			fmt.Println("FINISH CLIENT CONNECTION")
+			return
+		}
+
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -148,6 +156,19 @@ func (c *Client) receiveFile() {
 		if totalLen == c.fileBuffer.fileSize {
 			message.NewMessage().FIM().Send(c.connTCP)
 			time.Sleep(50 * time.Millisecond)
+
+			c.writeFile()
+
+			// for _, bckt := range c.fileBuffer.pkgBuckets {
+			// 	fmt.Printf("[")
+			// 	for _, pkg := range bckt {
+			// 		fmt.Printf("%v, ", pkg.seqNumber)
+			// 	}
+			// 	fmt.Printf("]\n")
+			// }
+
+			c.connUDP.UDP.Close()
+			c.connTCP.Close()
 			break
 		}
 	}
@@ -159,10 +180,10 @@ func (c *Client) addToPkgBucket(seqNum int, payload []byte) {
 		payload:   payload,
 	}
 
-	for _, bucket := range c.fileBuffer.pkgBuckets {
+	for i, bucket := range c.fileBuffer.pkgBuckets {
 		lastPkg := bucket[len(bucket)-1]
 		if seqNum == lastPkg.seqNumber+1 {
-			bucket = append(bucket, newPkg)
+			c.fileBuffer.pkgBuckets[i] = append(bucket, newPkg)
 			return
 		}
 	}
@@ -171,6 +192,49 @@ func (c *Client) addToPkgBucket(seqNum int, payload []byte) {
 	newBucket = append(newBucket, newPkg)
 
 	c.fileBuffer.pkgBuckets = append(c.fileBuffer.pkgBuckets, newBucket)
+}
+
+func (c *Client) writeFile() {
+	file := getPayload(c.fileBuffer.pkgBuckets, len(c.fileBuffer.rcvLog)-1)
+	fmt.Println(file)
+
+	_, b, _, _ := runtime.Caller(0)
+	basepath := filepath.Dir(b)
+
+	err := ioutil.WriteFile(basepath+"/"+c.fileBuffer.fileName, file, 0644)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+func getPayload(buckets [][]Pkg, lastPkgIdx int) []byte {
+	var final []byte
+	var zeroBckt []Pkg
+	for _, v := range buckets {
+		if v[0].seqNumber == 0 {
+			zeroBckt = v
+		}
+	}
+
+	currBckt := zeroBckt
+	for {
+		for _, v := range currBckt {
+			final = append(final, v.payload...)
+		}
+		if currBckt[len(currBckt)-1].seqNumber == lastPkgIdx {
+			break
+		}
+
+		nxtFirstPkg := currBckt[len(currBckt)-1].seqNumber + 1
+
+		for _, v := range buckets {
+			if v[0].seqNumber == nxtFirstPkg {
+				currBckt = v
+			}
+		}
+	}
+
+	return final
 }
 
 func main() {

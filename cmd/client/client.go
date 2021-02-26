@@ -291,6 +291,10 @@ func main() {
 		fmt.Println("Estou escutando...")
 		msg, err := bufio.NewReader(conn).ReadBytes('\n')
 
+		if len(msg) == 0 {
+			return
+		}
+
 		if err != nil {
 			fmt.Println(err)
 			return
