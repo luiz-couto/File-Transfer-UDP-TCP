@@ -39,13 +39,12 @@ type SlidingWindow struct {
 
 // Client DOC TODO
 type Client struct {
-	UDPconn         *net.UDPConn
-	TCPconn         net.Conn
-	SliWindow       *SlidingWindow
-	file            *File
-	tss             *broker.ThreadSafeSlice
-	rcvAck          chan struct{}
-	endTransmission bool
+	UDPconn   *net.UDPConn
+	TCPconn   net.Conn
+	SliWindow *SlidingWindow
+	file      *File
+	tss       *broker.ThreadSafeSlice
+	sndNxt    chan struct{}
 }
 
 /*
@@ -89,29 +88,6 @@ func (c *Client) startUDPConnection(port int) {
 	c.UDPconn = udpConn
 }
 
-func (c *Client) getNextWindow() []int {
-	var nxtWin []int
-
-	c.SliWindow.mutex.Lock()
-	defer c.SliWindow.mutex.Unlock()
-
-	for i := 0; i < c.SliWindow.windowSize; i++ {
-		// if len(c.SliWindow.lostPkgs) > 0 {
-		// 	nxtWin = append(nxtWin, c.SliWindow.lostPkgs[0])
-
-		// 	c.SliWindow.lostPkgs = RemoveFromSlice(c.SliWindow.lostPkgs, c.SliWindow.lostPkgs[0])
-
-		// 	continue
-		// }
-
-		if c.SliWindow.nxtPkg != len(c.SliWindow.pkgs) {
-			nxtWin = append(nxtWin, c.SliWindow.nxtPkg)
-			c.SliWindow.nxtPkg = c.SliWindow.nxtPkg + 1
-		}
-	}
-	return nxtWin
-}
-
 func (c *Client) waitForAck(ctx context.Context, seqNum int, cancel context.CancelFunc, w *broker.Worker) {
 	w.Source = make(chan int, 1000)
 	w.Quit = globalQuit
@@ -126,7 +102,7 @@ func (c *Client) waitForAck(ctx context.Context, seqNum int, cancel context.Canc
 				if rcvAck == seqNum {
 					c.SliWindow.mutex.Lock()
 					fmt.Println(time.Now().Format(time.RFC850) + "PASSSSOUU AQQQ -> " + "ACK -> " + strconv.Itoa(seqNum))
-					c.rcvAck <- struct{}{}
+					c.sndNxt <- struct{}{}
 					return
 				}
 
@@ -136,7 +112,7 @@ func (c *Client) waitForAck(ctx context.Context, seqNum int, cancel context.Canc
 				c.SliWindow.mutex.Lock()
 				c.SliWindow.lostPkgs = append(c.SliWindow.lostPkgs, seqNum)
 
-				c.rcvAck <- struct{}{}
+				c.sndNxt <- struct{}{}
 
 				return
 
@@ -145,20 +121,6 @@ func (c *Client) waitForAck(ctx context.Context, seqNum int, cancel context.Canc
 			}
 		}
 	}()
-}
-
-func (c *Client) sendFirstWindow(firstWindow []int) {
-	for _, seqNum := range firstWindow {
-		pkg := c.SliWindow.pkgs[seqNum]
-
-		ctx, cancel := context.WithTimeout(context.Background(), 3200*time.Millisecond)
-
-		w := &broker.Worker{}
-		c.waitForAck(ctx, seqNum, cancel, w)
-		c.tss.Push(w)
-
-		message.NewMessage().FILE(seqNum, len(pkg), pkg).SendFile(c.UDPconn)
-	}
 }
 
 func (c *Client) sendNxtPkg() {
@@ -207,13 +169,15 @@ func (c *Client) startFileTransmission() {
 	c.SliWindow = sliWin
 	c.tss = tss
 
-	firstWin := c.getNextWindow()
-	c.sendFirstWindow(firstWin)
+	// Send first window
+	for i := 0; i < c.SliWindow.windowSize; i++ {
+		c.SliWindow.mutex.Lock()
+		c.sendNxtPkg()
+	}
 
 	for {
-
 		select {
-		case <-c.rcvAck:
+		case <-c.sndNxt:
 			c.sendNxtPkg()
 
 		case <-globalQuit:
@@ -257,8 +221,6 @@ func (c *Client) handleMsg(msg []byte) {
 		c.tss.Mutex.Lock()
 		c.SliWindow.lostPkgs = []int{}
 		c.tss.Mutex.Unlock()
-
-		c.endTransmission = true
 	}
 }
 
@@ -282,10 +244,9 @@ func main() {
 	message.NewMessage().HELLO().Send(conn)
 
 	client := &Client{
-		TCPconn:         conn,
-		file:            file,
-		endTransmission: false,
-		rcvAck:          make(chan struct{}),
+		TCPconn: conn,
+		file:    file,
+		sndNxt:  make(chan struct{}),
 	}
 
 	for {
