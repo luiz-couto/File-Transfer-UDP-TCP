@@ -41,6 +41,7 @@ type SlidingWindow struct {
 type Client struct {
 	UDPconn   *net.UDPConn
 	TCPconn   net.Conn
+	address   string
 	SliWindow *SlidingWindow
 	file      *File
 	tss       *broker.ThreadSafeSlice
@@ -76,9 +77,7 @@ func ReadFile(fileName string) *File {
 }
 
 func (c *Client) startUDPConnection(port int) {
-	connectTo := strings.Split(c.TCPconn.RemoteAddr().String(), ":")[0]
-
-	addr, err := net.ResolveUDPAddr("udp", connectTo+":"+strconv.Itoa(port))
+	addr, err := net.ResolveUDPAddr("udp", c.address+":"+strconv.Itoa(port))
 	udpConn, err := net.DialUDP("udp", nil, addr)
 	if err != nil {
 		fmt.Println(err)
@@ -231,11 +230,14 @@ func main() {
 		return
 	}
 
-	connectTo := args[1] + ":" + args[2]
+	address := args[1]
+	if !(strings.Count(address, ":") < 2) {
+		address = "[" + args[1] + "]"
+	}
 
 	file := ReadFile(args[3])
 
-	conn, err := net.Dial("tcp", connectTo)
+	conn, err := net.Dial("tcp", address+":"+args[2])
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -247,6 +249,7 @@ func main() {
 		TCPconn: conn,
 		file:    file,
 		sndNxt:  make(chan struct{}),
+		address: address,
 	}
 
 	for {
