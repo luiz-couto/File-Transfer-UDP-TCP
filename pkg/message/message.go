@@ -96,7 +96,7 @@ func (msg *Message) ACK(seqNumber int) *Message {
 
 // Send sends the message for given connection
 func (msg *Message) Send(conn net.Conn) {
-	sendMsg := append(msg.body, []byte("\n")...)
+	sendMsg := append(msg.body, 255)
 	conn.Write(sendMsg)
 }
 

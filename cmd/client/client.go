@@ -143,7 +143,7 @@ func (c *Client) checkNxtWindowEmpty(nxtWindow []int) bool {
 }
 
 func (c *Client) waitForAck(ctx context.Context, seqNum int, cancel context.CancelFunc, w *worker) {
-	w.source = make(chan int, 10)
+	w.source = make(chan int, 1000)
 	w.quit = globalQuit
 
 	go func() {
@@ -152,7 +152,7 @@ func (c *Client) waitForAck(ctx context.Context, seqNum int, cancel context.Canc
 		for {
 			select {
 			case rcvAck := <-w.source:
-				fmt.Println("ACK -> " + strconv.Itoa(rcvAck) + " / Thread " + strconv.Itoa(seqNum))
+				//fmt.Println("ACK -> " + strconv.Itoa(rcvAck) + " / Thread " + strconv.Itoa(seqNum))
 				if rcvAck == seqNum {
 					fmt.Println(time.Now().Format(time.RFC850) + "PASSSSOUU AQQQ -> " + "ACK -> " + strconv.Itoa(seqNum))
 					return
@@ -242,7 +242,9 @@ func (c *Client) handleMsg(msg []byte) {
 
 	case message.AckType:
 		fmt.Println("Received ACK")
+		fmt.Println(msg)
 		seqNum := bytes.ReadByteBlockAsInt(2, 6, msg)
+		fmt.Printf("SEQ NUMBER: %v\n", seqNum)
 		//c.ack.Publish(seqNum)
 
 		c.tss.Iter(func(w *worker) { w.source <- seqNum })
@@ -289,7 +291,7 @@ func main() {
 	for {
 
 		fmt.Println("Estou escutando...")
-		msg, err := bufio.NewReader(conn).ReadBytes('\n')
+		msg, err := bufio.NewReader(conn).ReadBytes(255)
 
 		if len(msg) == 0 {
 			return

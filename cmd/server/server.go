@@ -76,7 +76,7 @@ func (c *Client) startUDPConnection() {
 
 func (c *Client) handleConnection() {
 	for {
-		msg, err := bufio.NewReader(c.connTCP).ReadBytes('\n')
+		msg, err := bufio.NewReader(c.connTCP).ReadBytes(255)
 
 		if len(msg) == 0 {
 			fmt.Println("FINISH CLIENT CONNECTION")
@@ -141,7 +141,7 @@ func (c *Client) receiveFile() {
 		payload := msg[8 : 8+payloadSize]
 
 		message.NewMessage().ACK(seqNumber).Send(c.connTCP)
-		time.Sleep(50 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 
 		if _, ok := c.fileBuffer.rcvLog[seqNumber]; ok {
 			continue
@@ -155,7 +155,7 @@ func (c *Client) receiveFile() {
 
 		if totalLen == c.fileBuffer.fileSize {
 			message.NewMessage().FIM().Send(c.connTCP)
-			time.Sleep(50 * time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 
 			c.writeFile()
 
@@ -196,7 +196,6 @@ func (c *Client) addToPkgBucket(seqNum int, payload []byte) {
 
 func (c *Client) writeFile() {
 	file := getPayload(c.fileBuffer.pkgBuckets, len(c.fileBuffer.rcvLog)-1)
-	fmt.Println(file)
 
 	_, b, _, _ := runtime.Caller(0)
 	basepath := filepath.Dir(b)
