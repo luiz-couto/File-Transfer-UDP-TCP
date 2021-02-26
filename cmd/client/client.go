@@ -18,6 +18,8 @@ import (
 
 var globalQuit chan struct{} = make(chan struct{})
 
+const maxPkgLen = 1000
+
 // File DOC TODO
 type File struct {
 	fileSize int
@@ -40,34 +42,8 @@ type Client struct {
 	TCPconn         net.Conn
 	SliWindow       *SlidingWindow
 	file            *File
-	tss             *threadSafeSlice
+	tss             *ThreadSafeSlice
 	endTransmission bool
-}
-
-type worker struct {
-	source chan int
-	quit   chan struct{}
-}
-
-type threadSafeSlice struct {
-	sync.Mutex
-	workers []*worker
-}
-
-func (slice *threadSafeSlice) Push(w *worker) {
-	slice.Lock()
-	defer slice.Unlock()
-
-	slice.workers = append(slice.workers, w)
-}
-
-func (slice *threadSafeSlice) Iter(routine func(*worker)) {
-	slice.Lock()
-	defer slice.Unlock()
-
-	for _, worker := range slice.workers {
-		routine(worker)
-	}
 }
 
 /*
@@ -133,16 +109,7 @@ func (c *Client) getNextWindow() []int {
 	return nxtWin
 }
 
-func (c *Client) checkNxtWindowEmpty(nxtWindow []int) bool {
-	for _, v := range nxtWindow {
-		if v != -1 {
-			return false
-		}
-	}
-	return true
-}
-
-func (c *Client) waitForAck(ctx context.Context, seqNum int, cancel context.CancelFunc, w *worker) {
+func (c *Client) waitForAck(ctx context.Context, seqNum int, cancel context.CancelFunc, w *Worker) {
 	w.source = make(chan int, 1000)
 	w.quit = globalQuit
 
@@ -160,9 +127,11 @@ func (c *Client) waitForAck(ctx context.Context, seqNum int, cancel context.Canc
 
 			case <-ctx.Done():
 				fmt.Println("TIMEOUT: " + strconv.Itoa(seqNum))
+
 				c.SliWindow.mutex.Lock()
 				c.SliWindow.lostPkgs = append(c.SliWindow.lostPkgs, seqNum)
 				c.SliWindow.mutex.Unlock()
+
 				return
 
 			case <-w.quit:
@@ -170,7 +139,6 @@ func (c *Client) waitForAck(ctx context.Context, seqNum int, cancel context.Canc
 			}
 		}
 	}()
-
 }
 
 func (c *Client) sendNxtWindow(nxtWindow []int) {
@@ -179,7 +147,7 @@ func (c *Client) sendNxtWindow(nxtWindow []int) {
 
 		ctx, cancel := context.WithTimeout(context.Background(), 3200*time.Millisecond)
 
-		w := &worker{}
+		w := &Worker{}
 		c.waitForAck(ctx, seqNum, cancel, w)
 		c.tss.Push(w)
 
@@ -198,8 +166,8 @@ func (c *Client) startFileTransmission() {
 		pkgs:       pkgs,
 	}
 
-	tss := &threadSafeSlice{
-		workers: []*worker{},
+	tss := &ThreadSafeSlice{
+		workers: []*Worker{},
 	}
 
 	c.SliWindow = sliWin
@@ -244,10 +212,8 @@ func (c *Client) handleMsg(msg []byte) {
 		fmt.Println("Received ACK")
 		fmt.Println(msg)
 		seqNum := bytes.ReadByteBlockAsInt(2, 6, msg)
-		fmt.Printf("SEQ NUMBER: %v\n", seqNum)
-		//c.ack.Publish(seqNum)
 
-		c.tss.Iter(func(w *worker) { w.source <- seqNum })
+		c.tss.Iter(func(w *Worker) { w.source <- seqNum })
 
 		return
 
@@ -289,7 +255,6 @@ func main() {
 	}
 
 	for {
-
 		fmt.Println("Estou escutando...")
 		msg, err := bufio.NewReader(conn).ReadBytes(255)
 
@@ -303,6 +268,5 @@ func main() {
 		}
 
 		client.handleMsg(msg)
-
 	}
 }
