@@ -91,13 +91,14 @@ func (c *Client) startUDPConnection(port int) {
 func (c *Client) getNextWindow() []int {
 	var nxtWin []int
 
+	c.SliWindow.mutex.Lock()
+	defer c.SliWindow.mutex.Unlock()
+
 	for i := 0; i < c.SliWindow.windowSize; i++ {
 		if len(c.SliWindow.lostPkgs) > 0 {
 			nxtWin = append(nxtWin, c.SliWindow.lostPkgs[0])
 
-			c.SliWindow.mutex.Lock()
 			c.SliWindow.lostPkgs = RemoveFromSlice(c.SliWindow.lostPkgs, c.SliWindow.lostPkgs[0])
-			c.SliWindow.mutex.Unlock()
 
 			continue
 		}
