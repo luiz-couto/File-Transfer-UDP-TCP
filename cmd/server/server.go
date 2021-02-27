@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"os"
@@ -37,6 +38,7 @@ type Client struct {
 	connTCP    net.Conn
 	connUDP    *UDPConnection
 	fileBuffer *FileBuffer
+	reader     *bufio.Reader
 }
 
 //UDPConnection defines the udp connection object
@@ -76,23 +78,20 @@ func (c *Client) startUDPConnection() {
 
 func (c *Client) handleConnection() {
 	for {
-		msg, err := bufio.NewReader(c.connTCP).ReadBytes(255)
+		buf := make([]byte, 2)
+		n, _ := io.ReadFull(c.reader, buf)
 
-		if len(msg) == 0 {
+		if n == 0 {
 			fmt.Println("FINISH CLIENT CONNECTION")
 			return
 		}
 
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		c.handleMsg(msg)
+		c.handleMsg(buf)
 	}
 }
 
-func (c *Client) handleMsg(msg []byte) {
-	msgID := bytes.ReadByteBlockAsInt(0, 2, msg)
+func (c *Client) handleMsg(msgType []byte) {
+	msgID := bytes.ReadByteBlockAsInt(0, 2, msgType)
 	switch msgID {
 	case message.HelloType:
 		fmt.Println("Received HELLO")
@@ -101,8 +100,14 @@ func (c *Client) handleMsg(msg []byte) {
 
 	case message.InfoFileType:
 		fmt.Println("Received INFO_FILE")
-		fileName := bytes.ReadByteBlockAsString(2, 17, msg)
-		fileSize := bytes.ReadByteBlockAsInt(17, 25, msg)
+
+		buf := make([]byte, 15)
+		io.ReadFull(c.reader, buf)
+		fileName := bytes.ReadByteBlockAsString(0, 15, buf)
+
+		buf2 := make([]byte, 8)
+		io.ReadFull(c.reader, buf2)
+		fileSize := bytes.ReadByteBlockAsInt(0, 8, buf2)
 
 		fileBuffer := &FileBuffer{
 			fileName: fileName,
@@ -257,8 +262,12 @@ func main() {
 			fmt.Println(err)
 			return
 		}
+
+		reader := bufio.NewReader(conn)
+
 		client := &Client{
 			connTCP: conn,
+			reader:  reader,
 		}
 		go client.handleConnection()
 	}

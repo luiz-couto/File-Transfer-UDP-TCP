@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"os"
@@ -48,6 +49,7 @@ type Client struct {
 	file      *File
 	tss       *broker.ThreadSafeSlice
 	sndNxt    chan struct{}
+	reader    *bufio.Reader
 }
 
 /*
@@ -190,12 +192,16 @@ func (c *Client) startFileTransmission() {
 	}
 }
 
-func (c *Client) handleMsg(msg []byte) {
-	msgID := bytes.ReadByteBlockAsInt(0, 2, msg)
+func (c *Client) handleMsg(msgType []byte) {
+	msgID := bytes.ReadByteBlockAsInt(0, 2, msgType)
 	switch msgID {
 	case message.ConnectionType:
 		fmt.Println("Received CONNECTION")
-		port := bytes.ReadByteBlockAsInt(2, 6, msg)
+
+		buf := make([]byte, 4)
+		io.ReadFull(c.reader, buf)
+
+		port := bytes.ReadByteBlockAsInt(0, 4, buf)
 
 		fmt.Println("Porto UDP is " + strconv.Itoa(port))
 		c.startUDPConnection(port)
@@ -208,8 +214,11 @@ func (c *Client) handleMsg(msg []byte) {
 
 	case message.AckType:
 		fmt.Println("Received ACK")
-		fmt.Println(msg)
-		seqNum := bytes.ReadByteBlockAsInt(2, 6, msg)
+
+		buf := make([]byte, 4)
+		io.ReadFull(c.reader, buf)
+
+		seqNum := bytes.ReadByteBlockAsInt(0, 4, buf)
 
 		c.tss.Iter(func(w *broker.Worker) { w.Source <- seqNum })
 
@@ -253,6 +262,7 @@ func main() {
 		return
 	}
 
+	// Check if is IPv6
 	address := args[1]
 	if !(strings.Count(address, ":") < 2) {
 		address = "[" + args[1] + "]"
@@ -270,6 +280,8 @@ func main() {
 		return
 	}
 
+	reader := bufio.NewReader(conn)
+
 	message.NewMessage().HELLO().Send(conn)
 
 	client := &Client{
@@ -277,21 +289,18 @@ func main() {
 		file:    file,
 		sndNxt:  make(chan struct{}),
 		address: address,
+		reader:  reader,
 	}
 
 	for {
 		fmt.Println("Estou escutando...")
-		msg, err := bufio.NewReader(conn).ReadBytes(255)
+		buf := make([]byte, 2)
 
-		if len(msg) == 0 {
+		n, _ := io.ReadFull(reader, buf)
+		if n == 0 {
 			return
 		}
 
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-
-		client.handleMsg(msg)
+		client.handleMsg(buf)
 	}
 }
