@@ -7,10 +7,12 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/luiz-couto/File-Transfer-UDP-TCP/pkg/broker"
 	"github.com/luiz-couto/File-Transfer-UDP-TCP/pkg/bytes"
@@ -63,17 +65,17 @@ func RemoveFromSlice(vs []int, t int) []int {
 }
 
 // ReadFile DOC TODO
-func ReadFile(fileName string) *File {
+func ReadFile(fileName string) (*File, error) {
 	fileContent, err := ioutil.ReadFile(fileName)
 	if err != nil {
-		fmt.Println(err)
+		return nil, err
 	}
 
 	return &File{
 		fileSize: len(fileContent),
-		fileName: fileName,
+		fileName: filepath.Base(fileName),
 		content:  fileContent,
-	}
+	}, nil
 }
 
 func (c *Client) startUDPConnection(port int) {
@@ -223,10 +225,31 @@ func (c *Client) handleMsg(msg []byte) {
 	}
 }
 
+func validateFileName(name string) bool {
+	if len([]byte(name)) > 15 || strings.Count(name, ".") != 1 || len(strings.Split(name, ".")[1]) != 3 || !isASCII(name) {
+		return false
+	}
+	return true
+}
+
+func isASCII(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] > unicode.MaxASCII {
+			return false
+		}
+	}
+	return true
+}
+
 func main() {
 	args := os.Args
 	if len(args) != 4 {
 		fmt.Println("usage ./client <server_address> <port_number> <file_name>")
+		return
+	}
+
+	if !validateFileName(filepath.Base(args[3])) {
+		fmt.Println("Nome não permitido.")
 		return
 	}
 
@@ -235,7 +258,11 @@ func main() {
 		address = "[" + args[1] + "]"
 	}
 
-	file := ReadFile(args[3])
+	file, err := ReadFile(args[3])
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	conn, err := net.Dial("tcp", address+":"+args[2])
 	if err != nil {
