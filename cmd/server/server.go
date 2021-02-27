@@ -16,16 +16,22 @@ import (
 	"github.com/luiz-couto/File-Transfer-UDP-TCP/pkg/message"
 )
 
-//maxBufferSize DOC TODO
+/*
+maxBufferSize is the largest possible message size
+*/
 const maxBufferSize = 1008
 
-// Pkg DOC TODO
+/*
+Pkg defines the Pkg structure
+*/
 type Pkg struct {
 	seqNumber int
 	payload   []byte
 }
 
-// FileBuffer DOC TODO
+/*
+FileBuffer defines the FileBuffer structure
+*/
 type FileBuffer struct {
 	fileSize   int
 	fileName   string
@@ -33,7 +39,9 @@ type FileBuffer struct {
 	rcvLog     map[int]bool
 }
 
-//Client DOC TODO
+/*
+Client defines the client structure
+*/
 type Client struct {
 	connTCP    net.Conn
 	connUDP    *UDPConnection
@@ -41,12 +49,18 @@ type Client struct {
 	reader     *bufio.Reader
 }
 
-//UDPConnection defines the udp connection object
+/*
+UDPConnection defines the UDP structure
+*/
 type UDPConnection struct {
 	UDP  *net.UDPConn
 	port int
 }
 
+/*
+startUDPConnection initiates the UDP connection and adds a pointer to that connection to the
+client's structure
+*/
 func (c *Client) startUDPConnection() {
 	// Get a Free Port Number
 	listener, err := net.Listen("tcp", ":0")
@@ -76,6 +90,9 @@ func (c *Client) startUDPConnection() {
 
 }
 
+/*
+handleConnection is the thread of each client that waits for messages
+*/
 func (c *Client) handleConnection() {
 	for {
 		buf := make([]byte, 2)
@@ -90,6 +107,10 @@ func (c *Client) handleConnection() {
 	}
 }
 
+/*
+handleMsg decides the type of the message for the given bytes
+and chooses how to handle it based on the type
+*/
 func (c *Client) handleMsg(msgType []byte) {
 	msgID := bytes.ReadByteBlockAsInt(0, 2, msgType)
 	switch msgID {
@@ -124,6 +145,11 @@ func (c *Client) handleMsg(msgType []byte) {
 	}
 }
 
+/*
+receiveFile waits for FILE messages and sends an ACK to the respective sequence number.
+For each received packet, it is added to a client buffer. It will be running until the
+expected file size is reached.
+*/
 func (c *Client) receiveFile() {
 	totalLen := 0
 	for {
@@ -146,7 +172,6 @@ func (c *Client) receiveFile() {
 		payload := msg[8 : 8+payloadSize]
 
 		message.NewMessage().ACK(seqNumber).Send(c.connTCP)
-		//time.Sleep(100 * time.Millisecond)
 
 		if _, ok := c.fileBuffer.rcvLog[seqNumber]; ok {
 			continue
@@ -164,14 +189,6 @@ func (c *Client) receiveFile() {
 
 			c.writeFile()
 
-			// for _, bckt := range c.fileBuffer.pkgBuckets {
-			// 	fmt.Printf("[")
-			// 	for _, pkg := range bckt {
-			// 		fmt.Printf("%v, ", pkg.seqNumber)
-			// 	}
-			// 	fmt.Printf("]\n")
-			// }
-
 			c.connUDP.UDP.Close()
 			c.connTCP.Close()
 			break
@@ -179,6 +196,11 @@ func (c *Client) receiveFile() {
 	}
 }
 
+/*
+addToPkgBucket receives a sequence number and payload for a package and decides which
+bucket that package will be added to or whether a new bucket will be created for that
+package
+*/
 func (c *Client) addToPkgBucket(seqNum int, payload []byte) {
 	newPkg := Pkg{
 		seqNumber: seqNum,
@@ -199,6 +221,9 @@ func (c *Client) addToPkgBucket(seqNum int, payload []byte) {
 	c.fileBuffer.pkgBuckets = append(c.fileBuffer.pkgBuckets, newBucket)
 }
 
+/*
+writeFile will get the file payload and write the file in the current directory
+*/
 func (c *Client) writeFile() {
 	file := getPayload(c.fileBuffer.pkgBuckets, len(c.fileBuffer.rcvLog)-1)
 
@@ -211,6 +236,10 @@ func (c *Client) writeFile() {
 	}
 }
 
+/*
+getPayload receives buckets of packages and joins them in the correct order,
+returning the file in bytes
+*/
 func getPayload(buckets [][]Pkg, lastPkgIdx int) []byte {
 	var final []byte
 	var zeroBckt []Pkg

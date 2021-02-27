@@ -6,7 +6,10 @@ import (
 	"fmt"
 )
 
-//CreateByteBlock DOC TODO
+/*
+CreateByteBlock receives an array of bytes and returns a block of the given size
+with that information. It fills the rest of the bytes with spaces
+*/
 func CreateByteBlock(tam int, body []byte) []byte {
 	if len(body) > tam {
 		fmt.Println(tam)
@@ -24,12 +27,16 @@ func CreateByteBlock(tam int, body []byte) []byte {
 	return body
 }
 
-//ReadByteBlockAsString DOC TODO
+/*
+ReadByteBlockAsString reads a block of bytes as a string
+*/
 func ReadByteBlockAsString(start int, end int, body []byte) string {
 	return string(bytes.TrimSpace(body[start:end]))
 }
 
-// WriteIntAsBytes DOC TODO
+/*
+WriteIntAsBytes returns the byte representation of an integer value
+*/
 func WriteIntAsBytes(tam, i int) []byte {
 	bs := make([]byte, tam)
 
@@ -45,7 +52,9 @@ func WriteIntAsBytes(tam, i int) []byte {
 	return bs
 }
 
-// ReadByteBlockAsInt DOC TODO
+/*
+ReadByteBlockAsInt reads a block of bytes as an integer
+*/
 func ReadByteBlockAsInt(start int, end int, body []byte) int {
 	tam := end - start
 	buf := bytes.NewReader(body[start:end])
@@ -76,7 +85,9 @@ func ReadByteBlockAsInt(start int, end int, body []byte) int {
 	return 0
 }
 
-// DivideInPackages DOC TODOD
+/*
+DivideInPackages receives an array of bytes and splits it into several pkgSize size packets
+*/
 func DivideInPackages(content []byte, pkgSize int) map[int][]byte {
 	var divided [][]byte
 

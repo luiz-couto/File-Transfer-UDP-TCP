@@ -22,16 +22,18 @@ import (
 
 var globalQuit chan struct{} = make(chan struct{})
 
-const maxPkgLen = 1000
-
-// File DOC TODO
+/*
+File defines the file structure
+*/
 type File struct {
 	fileSize int
 	fileName string
 	content  []byte
 }
 
-// SlidingWindow DOC TODO
+/*
+SlidingWindow defines the sliding window structure
+*/
 type SlidingWindow struct {
 	windowSize int
 	lostPkgs   []int
@@ -40,7 +42,9 @@ type SlidingWindow struct {
 	mutex      sync.Mutex
 }
 
-// Client DOC TODO
+/*
+Client defines the client structure
+*/
 type Client struct {
 	UDPconn   *net.UDPConn
 	TCPconn   net.Conn
@@ -66,7 +70,9 @@ func RemoveFromSlice(vs []int, t int) []int {
 	return newSlice
 }
 
-// ReadFile DOC TODO
+/*
+ReadFile will read the file for the given path and return the structure for that file
+*/
 func ReadFile(fileName string) (*File, error) {
 	fileContent, err := ioutil.ReadFile(fileName)
 	if err != nil {
@@ -80,6 +86,10 @@ func ReadFile(fileName string) (*File, error) {
 	}, nil
 }
 
+/*
+startUDPConnection initiates the UDP connection and adds a pointer to that connection to the
+client's structure
+*/
 func (c *Client) startUDPConnection(port int) {
 	addr, err := net.ResolveUDPAddr("udp", c.address+":"+strconv.Itoa(port))
 	udpConn, err := net.DialUDP("udp", nil, addr)
@@ -91,6 +101,10 @@ func (c *Client) startUDPConnection(port int) {
 	c.UDPconn = udpConn
 }
 
+/*
+waitforAck creates the thread for each package. If it do not receive the ACK for the respective sequence
+number, timeout happens and the thread's sequence number is added to the list of lost packages
+*/
 func (c *Client) waitForAck(ctx context.Context, seqNum int, cancel context.CancelFunc, w *broker.Worker) {
 	w.Source = make(chan int, 1000)
 	w.Quit = globalQuit
@@ -126,6 +140,11 @@ func (c *Client) waitForAck(ctx context.Context, seqNum int, cancel context.Canc
 	}()
 }
 
+/*
+sendNxtPkg sends the next package. If there is a package in the list of lost packages
+(that have not received ACK) the first package is chosen. Otherwise, it sends the next
+available package from the file
+*/
 func (c *Client) sendNxtPkg() {
 	defer c.SliWindow.mutex.Unlock()
 
@@ -153,6 +172,11 @@ func (c *Client) sendNxtPkg() {
 	message.NewMessage().FILE(nxtSeqNum, len(pkg), pkg).SendFile(c.UDPconn)
 }
 
+/*
+startFileTransmission breaks the file into several packages, create
+and sends the first window and wait for the return of the
+threads of each package
+*/
 func (c *Client) startFileTransmission() {
 	pkgs := bytes.DivideInPackages(c.file.content, 1000)
 	wsize := len(pkgs) / 2
@@ -192,6 +216,10 @@ func (c *Client) startFileTransmission() {
 	}
 }
 
+/*
+handleMsg decides the type of the message for the given bytes
+and chooses how to handle it based on the type
+*/
 func (c *Client) handleMsg(msgType []byte) {
 	msgID := bytes.ReadByteBlockAsInt(0, 2, msgType)
 	switch msgID {
@@ -234,6 +262,10 @@ func (c *Client) handleMsg(msgType []byte) {
 	}
 }
 
+/*
+validateFileName checks if the given string is a valid file
+name
+*/
 func validateFileName(name string) bool {
 	if len([]byte(name)) > 15 || strings.Count(name, ".") != 1 || len(strings.Split(name, ".")[1]) != 3 || !isASCII(name) {
 		return false
@@ -241,6 +273,10 @@ func validateFileName(name string) bool {
 	return true
 }
 
+/*
+isASCII checks if the given string only contains ASCII
+characters
+*/
 func isASCII(s string) bool {
 	for i := 0; i < len(s); i++ {
 		if s[i] > unicode.MaxASCII {
@@ -262,16 +298,16 @@ func main() {
 		return
 	}
 
-	// Check if is IPv6
-	address := args[1]
-	if !(strings.Count(address, ":") < 2) {
-		address = "[" + args[1] + "]"
-	}
-
 	file, err := ReadFile(args[3])
 	if err != nil {
 		fmt.Println(err)
 		return
+	}
+
+	// Check if is IPv6
+	address := args[1]
+	if !(strings.Count(address, ":") < 2) {
+		address = "[" + args[1] + "]"
 	}
 
 	conn, err := net.Dial("tcp", address+":"+args[2])
