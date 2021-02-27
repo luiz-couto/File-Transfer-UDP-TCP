@@ -44,7 +44,7 @@ func (msg *Message) HELLO() *Message {
 }
 
 /*
-CONNECTION defines the HELLO message type
+CONNECTION defines the CONNECTION message type
 */
 func (msg *Message) CONNECTION(port int) *Message {
 	id := bytes.WriteIntAsBytes(2, ConnectionType)
