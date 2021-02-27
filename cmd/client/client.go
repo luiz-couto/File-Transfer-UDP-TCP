@@ -119,6 +119,8 @@ func (c *Client) waitForAck(ctx context.Context, seqNum int, cancel context.Canc
 				if rcvAck == seqNum {
 					c.SliWindow.mutex.Lock()
 					fmt.Println(time.Now().Format(time.RFC850) + "PASSSSOUU AQQQ -> " + "ACK -> " + strconv.Itoa(seqNum))
+
+					c.tss.Remove(w)
 					c.sndNxt <- struct{}{}
 					return
 				}
@@ -128,6 +130,7 @@ func (c *Client) waitForAck(ctx context.Context, seqNum int, cancel context.Canc
 
 				c.SliWindow.mutex.Lock()
 				c.SliWindow.lostPkgs = append(c.SliWindow.lostPkgs, seqNum)
+				c.tss.Remove(w)
 
 				c.sndNxt <- struct{}{}
 
