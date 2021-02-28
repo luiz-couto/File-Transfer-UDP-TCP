@@ -97,7 +97,8 @@ func (c *Client) handleConnection() {
 		n, _ := io.ReadFull(c.reader, buf)
 
 		if n == 0 {
-			fmt.Println("FINISH CLIENT CONNECTION")
+			fmt.Println("Arquivo recebido com sucesso")
+			fmt.Println("Conexão com o cliente finalizada")
 			return
 		}
 
@@ -179,7 +180,7 @@ func (c *Client) receiveFile() {
 		totalLen = totalLen + len(payload)
 		c.fileBuffer.rcvLog[seqNumber] = true
 
-		fmt.Println(totalLen)
+		fmt.Printf("Total recebido (acumulado): %v bytes\n", totalLen)
 
 		if totalLen == c.fileBuffer.fileSize {
 			message.NewMessage().FIM().Send(c.connTCP)

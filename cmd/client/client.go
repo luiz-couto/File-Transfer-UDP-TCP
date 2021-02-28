@@ -110,24 +110,22 @@ func (c *Client) waitForAck(ctx context.Context, seqNum int, cancel context.Canc
 	w.Quit = globalQuit
 
 	go func() {
-		fmt.Println("Started thread " + strconv.Itoa(seqNum))
 		defer cancel()
 		for {
 			select {
 			case rcvAck := <-w.Source:
-				//fmt.Println("ACK -> " + strconv.Itoa(rcvAck) + " / Thread " + strconv.Itoa(seqNum))
 				if rcvAck == seqNum {
+					fmt.Println("Received ACK pacote " + strconv.Itoa(seqNum))
 					c.SliWindow.mutex.Lock()
-					fmt.Println(time.Now().Format(time.RFC850) + "PASSSSOUU AQQQ -> " + "ACK -> " + strconv.Itoa(seqNum))
 
 					c.tss.Remove(w)
 					c.sndNxt <- struct{}{}
+
 					return
 				}
 
 			case <-ctx.Done():
-				fmt.Println("TIMEOUT: " + strconv.Itoa(seqNum))
-
+				fmt.Println("Timeout pacote " + strconv.Itoa(seqNum))
 				c.SliWindow.mutex.Lock()
 				c.SliWindow.lostPkgs = append(c.SliWindow.lostPkgs, seqNum)
 				c.tss.Remove(w)
@@ -168,7 +166,7 @@ func (c *Client) sendNxtPkg(releaseLock bool) {
 	}
 
 	pkg := c.SliWindow.pkgs[nxtSeqNum]
-	ctx, cancel := context.WithTimeout(context.Background(), 3200*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 
 	w := &broker.Worker{}
 	c.waitForAck(ctx, nxtSeqNum, cancel, w)
@@ -212,7 +210,7 @@ func (c *Client) startFileTransmission() {
 			c.sendNxtPkg(true)
 
 		case <-globalQuit:
-			fmt.Println("ENDING CONNECTION")
+			fmt.Println("Arquivo enviado com sucesso")
 			c.UDPconn.Close()
 			c.TCPconn.Close()
 			return
@@ -245,8 +243,6 @@ func (c *Client) handleMsg(msgType []byte) {
 		go c.startFileTransmission()
 
 	case message.AckType:
-		fmt.Println("Received ACK")
-
 		buf := make([]byte, 4)
 		io.ReadFull(c.reader, buf)
 
@@ -333,7 +329,6 @@ func main() {
 	}
 
 	for {
-		fmt.Println("Estou escutando...")
 		buf := make([]byte, 2)
 
 		n, _ := io.ReadFull(reader, buf)
