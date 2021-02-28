@@ -148,8 +148,10 @@ sendNxtPkg sends the next package. If there is a package in the list of lost pac
 (that have not received ACK) the first package is chosen. Otherwise, it sends the next
 available package from the file
 */
-func (c *Client) sendNxtPkg() {
-	defer c.SliWindow.mutex.Unlock()
+func (c *Client) sendNxtPkg(releaseLock bool) {
+	if releaseLock {
+		defer c.SliWindow.mutex.Unlock()
+	}
 
 	var nxtSeqNum int
 
@@ -201,14 +203,13 @@ func (c *Client) startFileTransmission() {
 
 	// Send first window
 	for i := 0; i < c.SliWindow.windowSize; i++ {
-		c.SliWindow.mutex.Lock()
-		c.sendNxtPkg()
+		c.sendNxtPkg(false)
 	}
 
 	for {
 		select {
 		case <-c.sndNxt:
-			c.sendNxtPkg()
+			c.sendNxtPkg(true)
 
 		case <-globalQuit:
 			fmt.Println("ENDING CONNECTION")

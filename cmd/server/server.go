@@ -226,7 +226,6 @@ func (c *Client) writeFile() {
 	file := getPayload(c.fileBuffer.pkgBuckets, len(c.fileBuffer.rcvLog)-1)
 
 	dir, _ := os.Getwd()
-	fmt.Println(dir)
 
 	err := ioutil.WriteFile(dir+"/"+c.fileBuffer.fileName, file, 0644)
 	if err != nil {
