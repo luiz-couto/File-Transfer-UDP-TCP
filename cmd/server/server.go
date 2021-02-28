@@ -7,8 +7,6 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
-	"path/filepath"
-	"runtime"
 	"strconv"
 	"time"
 
@@ -227,10 +225,10 @@ writeFile will get the file payload and write the file in the current directory
 func (c *Client) writeFile() {
 	file := getPayload(c.fileBuffer.pkgBuckets, len(c.fileBuffer.rcvLog)-1)
 
-	_, b, _, _ := runtime.Caller(0)
-	basepath := filepath.Dir(b)
+	dir, _ := os.Getwd()
+	fmt.Println(dir)
 
-	err := ioutil.WriteFile(basepath+"/"+c.fileBuffer.fileName, file, 0644)
+	err := ioutil.WriteFile(dir+"/"+c.fileBuffer.fileName, file, 0644)
 	if err != nil {
 		fmt.Println(err)
 	}
